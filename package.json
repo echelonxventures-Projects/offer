@@ -1,0 +1,42 @@
+{
+  "name": "goip",
+  "version": "1.0.0",
+  "description": "GOIP - Global Offer Infrastructure Platform. Universal value-exchange kernel.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "demo": "node examples/run-all.ts",
+    "example:coupon": "node examples/01-coupon.ts",
+    "example:cashback": "node examples/02-cashback.ts",
+    "example:subsidy": "node examples/03-government-subsidy.ts",
+    "example:affiliate": "node examples/04-affiliate-settlement.ts",
+    "example:offworld": "node examples/05-off-world.ts",
+    "example:stacking": "node examples/06-stacking-conflict.ts",
+    "docs:registries": "node tools/generate-registry-reference.ts",
+    "docs:check": "node tools/generate-registry-reference.ts --check",
+    "verify": "npm run typecheck && npm test && npm run docs:check && npm run demo > /dev/null && echo 'verify: all checks passed'",
+    "example:durability": "node examples/07-durability.ts",
+    "test:concurrency": "node --test test/concurrency.test.ts test/adapter-conformance.test.ts test/reaper.test.ts"
+  },
+  "keywords": [
+    "offers",
+    "incentives",
+    "promotions",
+    "value-exchange",
+    "rules-engine",
+    "settlement"
+  ],
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "@types/node": "^22.20.3",
+    "typescript": "^7.0.2"
+  }
+}

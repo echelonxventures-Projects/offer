@@ -1,0 +1,177 @@
+{
+  "suite": "canonical",
+  "level": "L1",
+  "description": "Canonical encoding used for hashing. Keys sort; bigints are tagged; absent and explicitly-undefined keys encode alike. Two structurally equal values MUST produce identical bytes and therefore identical hashes. Non-finite numbers are out of scope: JSON cannot carry them, so they cannot reach an implementation over any wire.",
+  "cases": [
+    {
+      "id": "empty-object",
+      "input": {
+        "value": "{}"
+      },
+      "expect": {
+        "canonical": "{}",
+        "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      }
+    },
+    {
+      "id": "empty-array",
+      "input": {
+        "value": "[]"
+      },
+      "expect": {
+        "canonical": "[]",
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    },
+    {
+      "id": "key-order-a",
+      "input": {
+        "value": "{\"a\":1,\"b\":2}"
+      },
+      "expect": {
+        "canonical": "{\"a\":1,\"b\":2}",
+        "sha256": "43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777"
+      }
+    },
+    {
+      "id": "key-order-b",
+      "input": {
+        "value": "{\"b\":2,\"a\":1}"
+      },
+      "expect": {
+        "canonical": "{\"a\":1,\"b\":2}",
+        "sha256": "43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777"
+      }
+    },
+    {
+      "id": "nested-key-order",
+      "input": {
+        "value": "{\"z\":{\"y\":1,\"x\":2},\"a\":[3,{\"c\":1,\"b\":2}]}"
+      },
+      "expect": {
+        "canonical": "{\"a\":[3,{\"b\":2,\"c\":1}],\"z\":{\"x\":2,\"y\":1}}",
+        "sha256": "93b41c92300c94e1aa77f147bc14969109f7abf758a01fb08d3335e76814c5dd"
+      }
+    },
+    {
+      "id": "bigint",
+      "input": {
+        "value": "{\"v\":\"~bigint:10\"}"
+      },
+      "expect": {
+        "canonical": "{\"v\":\"~bigint:10\"}",
+        "sha256": "a6ab1b9a33bf8c437ce81555fddd604c4169f0909f8997ce3ac7da806cebb757"
+      }
+    },
+    {
+      "id": "bigint-negative",
+      "input": {
+        "value": "{\"v\":\"~bigint:-10\"}"
+      },
+      "expect": {
+        "canonical": "{\"v\":\"~bigint:-10\"}",
+        "sha256": "4d5e38ea18bb0b37823dccc5c5b1d80ae8692d72ffd238b78430bb272d1a79fa"
+      }
+    },
+    {
+      "id": "bigint-huge",
+      "input": {
+        "value": "{\"v\":\"~bigint:123456789012345678901234567890\"}"
+      },
+      "expect": {
+        "canonical": "{\"v\":\"~bigint:123456789012345678901234567890\"}",
+        "sha256": "3fc2cf2e31739f61c44640ce4ef0bc01c6819f899b6b048bf7c7caa7d7597870"
+      }
+    },
+    {
+      "id": "number-vs-bigint",
+      "input": {
+        "value": "{\"a\":1,\"b\":\"~bigint:1\"}"
+      },
+      "expect": {
+        "canonical": "{\"a\":1,\"b\":\"~bigint:1\"}",
+        "sha256": "39b024efdaa41d02eaf0ec012e163a630dce901ef9e5e24ce45d3e0204bcf872"
+      }
+    },
+    {
+      "id": "null-and-absent",
+      "input": {
+        "value": "{\"a\":null,\"c\":1}"
+      },
+      "expect": {
+        "canonical": "{\"a\":null,\"c\":1}",
+        "sha256": "1102f143a6bf0811cff6307d46fa35f3e72122ea1243a5b9eb1fa15b9bad8a12"
+      }
+    },
+    {
+      "id": "booleans",
+      "input": {
+        "value": "{\"t\":true,\"f\":false}"
+      },
+      "expect": {
+        "canonical": "{\"f\":false,\"t\":true}",
+        "sha256": "c22848c47426fcf4d27e55573c22f1d23546315c251e8e4bc384820ba5fae568"
+      }
+    },
+    {
+      "id": "string-escapes",
+      "input": {
+        "value": "{\"s\":\"quote \\\" backslash \\\\ newline \\n tab \\t\"}"
+      },
+      "expect": {
+        "canonical": "{\"s\":\"quote \\\" backslash \\\\ newline \\n tab \\t\"}",
+        "sha256": "7a475e86b9a0007817692d7e8a99d392c802c5dc79e02aca62f655502e50ce14"
+      }
+    },
+    {
+      "id": "unicode",
+      "input": {
+        "value": "{\"s\":\"héllo wörld ₹ 中文\"}"
+      },
+      "expect": {
+        "canonical": "{\"s\":\"héllo wörld ₹ 中文\"}",
+        "sha256": "5339de4253183158b4fcc5cbb603f8097ae5bca826b4d6f83a7f4fd6291cdf5c"
+      }
+    },
+    {
+      "id": "array-order",
+      "input": {
+        "value": "[1,2,3]"
+      },
+      "expect": {
+        "canonical": "[1,2,3]",
+        "sha256": "a615eeaee21de5179de080de8c3052c8da901138406ba71c38c032845f7d54f4"
+      }
+    },
+    {
+      "id": "array-order-reversed",
+      "input": {
+        "value": "[3,2,1]"
+      },
+      "expect": {
+        "canonical": "[3,2,1]",
+        "sha256": "30c8681f9b840aceee56b737f3b126ae67ec4eb71d2881db831f86014fba016d"
+      }
+    },
+    {
+      "id": "deep-nesting",
+      "input": {
+        "value": "{\"a\":{\"b\":{\"c\":{\"d\":[1,{\"e\":\"~bigint:2\"}]}}}}"
+      },
+      "expect": {
+        "canonical": "{\"a\":{\"b\":{\"c\":{\"d\":[1,{\"e\":\"~bigint:2\"}]}}}}",
+        "sha256": "de9b94a64f66f28b87c4a9859087f92d46920db41ed20cbb4c31c7faa83aafd7"
+      }
+    },
+    {
+      "id": "amount-shape",
+      "input": {
+        "value": "{\"unit\":\"USD\",\"minor\":\"~bigint:1234\",\"scale\":2}"
+      },
+      "expect": {
+        "canonical": "{\"minor\":\"~bigint:1234\",\"scale\":2,\"unit\":\"USD\"}",
+        "sha256": "487905d02a7a9d1fbd40cc9d678483123cd719e7ac372b4f5b9e774e9f994607"
+      }
+    }
+  ]
+}

@@ -337,20 +337,24 @@ const DOMAIN: RuleOperator[] = [
     description: "True when the context place sits inside any of the listed spatial nodes.",
     args: ["nodes", "exclude"],
     evaluate(node, ctx) {
-      const place = ctx.context.spatial.place;
+      const { place, path } = ctx.context.spatial;
       if (!place) return no("context has no place");
+
+      // Read the ancestry the context resolver already computed rather than
+      // re-walking the spatial registry. Same answer, and it keeps rule
+      // evaluation a pure function of the context - which is what lets a rule
+      // be evaluated by an implementation that has no node table loaded.
       const include = Array.isArray(node.nodes) ? (node.nodes as string[]) : [];
       const exclude = Array.isArray(node.exclude) ? (node.exclude as string[]) : [];
-      const verdict = ctx.deps.spatial.evaluateScope({ include, exclude }, place);
-      if (!verdict.ok) return verdict;
-      return ok({
-        result: verdict.value.inside,
-        detail: verdict.value.excludedBy
-          ? `excluded by ${verdict.value.excludedBy}`
-          : verdict.value.matchedBy
-            ? `matched ${verdict.value.matchedBy}`
-            : `place ${place} not in scope`,
-      });
+
+      for (const excluded of exclude) {
+        if (path.includes(excluded)) return no(`excluded by ${excluded}`);
+      }
+      if (include.length === 0) return yes("unscoped");
+      for (const included of include) {
+        if (path.includes(included)) return yes(`matched ${included}`);
+      }
+      return no(`place ${place} not in scope`);
     },
   },
   {

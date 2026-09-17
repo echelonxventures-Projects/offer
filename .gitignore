@@ -3,3 +3,7 @@ dist/
 *.log
 .DS_Store
 .env
+
+# Go build artefacts
+conformance/go/conformance
+conformance/go/*.test

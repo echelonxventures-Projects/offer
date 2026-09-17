@@ -1,0 +1,1366 @@
+{
+  "suite": "rules",
+  "level": "L3",
+  "description": "Condition evaluation against a fixed context. The trace is normative: short-circuiting MUST leave un-evaluated children out of it, and depth MUST match. Incomparable operands are an error, never a silent false.",
+  "cases": [
+    {
+      "id": "__context__",
+      "input": {
+        "context": {
+          "reality": "production",
+          "tenant": "t",
+          "correlationId": "c-1",
+          "instant": {
+            "chronology": "earth.unix.ms",
+            "tick": "1789813800000"
+          },
+          "temporal": {
+            "chronology": "earth.unix.ms",
+            "calendar": "gregorian",
+            "zone": "UTC",
+            "fields": {
+              "year": 2026,
+              "month": 9,
+              "day": 19,
+              "hour": 10,
+              "minute": 30,
+              "second": 0,
+              "dayOfWeek": 6,
+              "dayOfYear": 262,
+              "quarter": 3
+            }
+          },
+          "spatial": {
+            "place": "earth.in.br.patna",
+            "path": [
+              "sol",
+              "earth",
+              "earth.in",
+              "earth.in.br",
+              "earth.in.br.patna"
+            ],
+            "jurisdiction": "IN-BR"
+          },
+          "economic": {
+            "unit": "USD",
+            "scale": 2
+          },
+          "subject": {
+            "id": "s1",
+            "anonymous": false,
+            "segments": [
+              "member",
+              "new-customer"
+            ],
+            "tier": "gold",
+            "memberships": [
+              "club"
+            ],
+            "counters": {
+              "redemptions.total": 1,
+              "orders.lifetime": 5
+            },
+            "attributes": {
+              "jurisdiction": "IN-BR"
+            }
+          },
+          "cart": {
+            "lines": [
+              {
+                "id": "l1",
+                "sku": "TEA-500",
+                "quantity": 2,
+                "unitPrice": {
+                  "unit": "USD",
+                  "minor": "3000",
+                  "scale": 2
+                },
+                "categories": [
+                  "grocery",
+                  "beverage"
+                ],
+                "merchant": "m1"
+              },
+              {
+                "id": "l2",
+                "sku": "MUG-CERAMIC",
+                "quantity": 1,
+                "unitPrice": {
+                  "unit": "USD",
+                  "minor": "4000",
+                  "scale": 2
+                },
+                "categories": [
+                  "homeware"
+                ],
+                "merchant": "m2"
+              }
+            ],
+            "subtotal": {
+              "unit": "USD",
+              "minor": "10000",
+              "scale": 2
+            },
+            "itemCount": 3,
+            "lineCount": 2
+          },
+          "channel": "web",
+          "facets": {
+            "risk": {
+              "score": 12
+            },
+            "flags": [
+              "a",
+              "b"
+            ]
+          },
+          "trace": []
+        }
+      },
+      "expect": {}
+    },
+    {
+      "id": "always",
+      "input": {
+        "rule": {
+          "op": "always"
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "always",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "never",
+      "input": {
+        "rule": {
+          "op": "never"
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "never",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "not",
+      "input": {
+        "rule": {
+          "op": "not",
+          "of": {
+            "op": "never"
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "never",
+            "result": false,
+            "depth": 1
+          },
+          {
+            "op": "not",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "all-true",
+      "input": {
+        "rule": {
+          "op": "all",
+          "of": [
+            {
+              "op": "always"
+            },
+            {
+              "op": "always"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "always",
+            "result": true,
+            "depth": 1
+          },
+          {
+            "op": "always",
+            "result": true,
+            "depth": 1
+          },
+          {
+            "op": "all",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "all-short-circuits",
+      "note": "the third child MUST NOT be evaluated",
+      "input": {
+        "rule": {
+          "op": "all",
+          "of": [
+            {
+              "op": "always"
+            },
+            {
+              "op": "never"
+            },
+            {
+              "op": "always"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "always",
+            "result": true,
+            "depth": 1
+          },
+          {
+            "op": "never",
+            "result": false,
+            "depth": 1
+          },
+          {
+            "op": "all",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "any-short-circuits",
+      "input": {
+        "rule": {
+          "op": "any",
+          "of": [
+            {
+              "op": "never"
+            },
+            {
+              "op": "always"
+            },
+            {
+              "op": "never"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "never",
+            "result": false,
+            "depth": 1
+          },
+          {
+            "op": "always",
+            "result": true,
+            "depth": 1
+          },
+          {
+            "op": "any",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "none",
+      "input": {
+        "rule": {
+          "op": "none",
+          "of": [
+            {
+              "op": "never"
+            },
+            {
+              "op": "never"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "never",
+            "result": false,
+            "depth": 1
+          },
+          {
+            "op": "never",
+            "result": false,
+            "depth": 1
+          },
+          {
+            "op": "none",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "gte-money-true",
+      "input": {
+        "rule": {
+          "op": "gte",
+          "left": {
+            "path": "cart.subtotal"
+          },
+          "right": {
+            "amount": {
+              "unit": "USD",
+              "decimal": "100.00"
+            }
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "gte",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "gt-money-false",
+      "input": {
+        "rule": {
+          "op": "gt",
+          "left": {
+            "path": "cart.subtotal"
+          },
+          "right": {
+            "amount": {
+              "unit": "USD",
+              "decimal": "100.00"
+            }
+          }
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "gt",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "lt-money",
+      "input": {
+        "rule": {
+          "op": "lt",
+          "left": {
+            "path": "cart.subtotal"
+          },
+          "right": {
+            "amount": {
+              "unit": "USD",
+              "decimal": "200.00"
+            }
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "lt",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "eq-string",
+      "input": {
+        "rule": {
+          "op": "eq",
+          "left": {
+            "path": "subject.tier"
+          },
+          "right": {
+            "literal": "gold"
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "eq",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "ne-string",
+      "input": {
+        "rule": {
+          "op": "ne",
+          "left": {
+            "path": "subject.tier"
+          },
+          "right": {
+            "literal": "silver"
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "ne",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "between",
+      "input": {
+        "rule": {
+          "op": "between",
+          "value": {
+            "path": "cart.itemCount"
+          },
+          "low": {
+            "literal": 2
+          },
+          "high": {
+            "literal": 5
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "between",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "exists-true",
+      "input": {
+        "rule": {
+          "op": "exists",
+          "value": {
+            "path": "subject.id"
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "exists",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "exists-false",
+      "input": {
+        "rule": {
+          "op": "exists",
+          "value": {
+            "path": "subject.nope"
+          }
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "exists",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-default",
+      "input": {
+        "rule": {
+          "op": "eq",
+          "left": {
+            "path": "subject.nope",
+            "default": 7
+          },
+          "right": {
+            "literal": 7
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "eq",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "in",
+      "input": {
+        "rule": {
+          "op": "in",
+          "value": {
+            "path": "subject.tier"
+          },
+          "options": {
+            "literal": [
+              "gold",
+              "platinum"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "in",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "notIn",
+      "input": {
+        "rule": {
+          "op": "notIn",
+          "value": {
+            "path": "subject.tier"
+          },
+          "options": {
+            "literal": [
+              "bronze"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "notIn",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "includesAny",
+      "input": {
+        "rule": {
+          "op": "includesAny",
+          "collection": {
+            "path": "subject.segments"
+          },
+          "values": {
+            "literal": [
+              "vip",
+              "member"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "includesAny",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "includesAll-false",
+      "input": {
+        "rule": {
+          "op": "includesAll",
+          "collection": {
+            "path": "subject.segments"
+          },
+          "values": {
+            "literal": [
+              "member",
+              "vip"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "includesAll",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "sizeOf",
+      "input": {
+        "rule": {
+          "op": "sizeOf",
+          "collection": {
+            "path": "cart.lines"
+          },
+          "gte": {
+            "literal": 2
+          },
+          "lte": {
+            "literal": 3
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "sizeOf",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "glob-true",
+      "input": {
+        "rule": {
+          "op": "glob",
+          "value": {
+            "path": "cart.lines.0.sku"
+          },
+          "pattern": {
+            "literal": "TEA-*"
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "glob",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "glob-false",
+      "input": {
+        "rule": {
+          "op": "glob",
+          "value": {
+            "path": "cart.lines.0.sku"
+          },
+          "pattern": {
+            "literal": "COFFEE-*"
+          }
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "glob",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "temporal-field-in",
+      "input": {
+        "rule": {
+          "op": "temporal.field",
+          "field": "dayOfWeek",
+          "in": [
+            6,
+            7
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "temporal.field",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "temporal-field-miss",
+      "input": {
+        "rule": {
+          "op": "temporal.field",
+          "field": "dayOfWeek",
+          "in": [
+            1
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "temporal.field",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "temporal-field-absent",
+      "note": "a field the calendar does not publish is false, not an error",
+      "input": {
+        "rule": {
+          "op": "temporal.field",
+          "field": "sol",
+          "in": [
+            1
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "temporal.field",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "temporal-field-range",
+      "input": {
+        "rule": {
+          "op": "temporal.field",
+          "field": "hour",
+          "min": 9,
+          "max": 17
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "temporal.field",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "subject-segment-any",
+      "input": {
+        "rule": {
+          "op": "subject.hasSegment",
+          "segments": [
+            "vip",
+            "member"
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "subject.hasSegment",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "subject-segment-all",
+      "input": {
+        "rule": {
+          "op": "subject.hasSegment",
+          "segments": [
+            "vip",
+            "member"
+          ],
+          "mode": "all"
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "subject.hasSegment",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "subject-membership",
+      "input": {
+        "rule": {
+          "op": "subject.hasMembership",
+          "memberships": [
+            "club"
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "subject.hasMembership",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "spatial-within",
+      "input": {
+        "rule": {
+          "op": "spatial.within",
+          "nodes": [
+            "earth.in"
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "spatial.within",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "spatial-within-excluded",
+      "input": {
+        "rule": {
+          "op": "spatial.within",
+          "nodes": [
+            "earth"
+          ],
+          "exclude": [
+            "earth.in.br"
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "spatial.within",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "spatial-jurisdiction",
+      "input": {
+        "rule": {
+          "op": "spatial.jurisdiction",
+          "in": [
+            "IN-BR",
+            "IN-MH"
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "spatial.jurisdiction",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "fn-quantity-in",
+      "input": {
+        "rule": {
+          "op": "eq",
+          "left": {
+            "fn": "cart.quantityIn",
+            "args": [
+              {
+                "literal": [
+                  "grocery"
+                ]
+              }
+            ]
+          },
+          "right": {
+            "literal": 2
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "eq",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "fn-subtotal-of",
+      "input": {
+        "rule": {
+          "op": "eq",
+          "left": {
+            "fn": "cart.subtotalOf",
+            "args": [
+              {
+                "literal": [
+                  "homeware"
+                ]
+              }
+            ]
+          },
+          "right": {
+            "amount": {
+              "unit": "USD",
+              "decimal": "40.00"
+            }
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "eq",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "fn-has-sku",
+      "input": {
+        "rule": {
+          "op": "eq",
+          "left": {
+            "fn": "cart.hasSku",
+            "args": [
+              {
+                "literal": [
+                  "MUG-*"
+                ]
+              }
+            ]
+          },
+          "right": {
+            "literal": true
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "eq",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "fn-merchants",
+      "input": {
+        "rule": {
+          "op": "includesAll",
+          "collection": {
+            "fn": "cart.merchants"
+          },
+          "values": {
+            "literal": [
+              "m1",
+              "m2"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "includesAll",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "fn-counter",
+      "input": {
+        "rule": {
+          "op": "lt",
+          "left": {
+            "fn": "subject.counter",
+            "args": [
+              {
+                "literal": "redemptions.total"
+              }
+            ]
+          },
+          "right": {
+            "literal": 3
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "lt",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "fn-counter-missing",
+      "input": {
+        "rule": {
+          "op": "eq",
+          "left": {
+            "fn": "subject.counter",
+            "args": [
+              {
+                "literal": "never.seen"
+              }
+            ]
+          },
+          "right": {
+            "literal": 0
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "eq",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "fn-facet",
+      "input": {
+        "rule": {
+          "op": "eq",
+          "left": {
+            "fn": "facet",
+            "args": [
+              {
+                "literal": "risk"
+              },
+              {
+                "literal": null
+              }
+            ]
+          },
+          "right": {
+            "literal": {
+              "score": 12
+            }
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "eq",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "fn-facet-default",
+      "input": {
+        "rule": {
+          "op": "eq",
+          "left": {
+            "fn": "facet",
+            "args": [
+              {
+                "literal": "absent"
+              },
+              {
+                "literal": 99
+              }
+            ]
+          },
+          "right": {
+            "literal": 99
+          }
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "eq",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "realistic-composite",
+      "input": {
+        "rule": {
+          "op": "all",
+          "of": [
+            {
+              "op": "gte",
+              "left": {
+                "path": "cart.subtotal"
+              },
+              "right": {
+                "amount": {
+                  "unit": "USD",
+                  "decimal": "50.00"
+                }
+              }
+            },
+            {
+              "op": "spatial.within",
+              "nodes": [
+                "earth.in"
+              ]
+            },
+            {
+              "op": "temporal.field",
+              "field": "dayOfWeek",
+              "in": [
+                6,
+                7
+              ]
+            },
+            {
+              "op": "subject.hasSegment",
+              "segments": [
+                "new-customer"
+              ]
+            },
+            {
+              "op": "lt",
+              "left": {
+                "fn": "subject.counter",
+                "args": [
+                  {
+                    "literal": "redemptions.total"
+                  }
+                ]
+              },
+              "right": {
+                "literal": 3
+              }
+            }
+          ]
+        }
+      },
+      "expect": {
+        "satisfied": true,
+        "trace": [
+          {
+            "op": "gte",
+            "result": true,
+            "depth": 1
+          },
+          {
+            "op": "spatial.within",
+            "result": true,
+            "depth": 1
+          },
+          {
+            "op": "temporal.field",
+            "result": true,
+            "depth": 1
+          },
+          {
+            "op": "subject.hasSegment",
+            "result": true,
+            "depth": 1
+          },
+          {
+            "op": "lt",
+            "result": true,
+            "depth": 1
+          },
+          {
+            "op": "all",
+            "result": true,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "error:incomparable",
+      "input": {
+        "rule": {
+          "op": "gt",
+          "left": {
+            "path": "subject.id"
+          },
+          "right": {
+            "amount": {
+              "unit": "USD",
+              "decimal": "1.00"
+            }
+          }
+        }
+      },
+      "expect": {
+        "error": "RULE_ERROR"
+      }
+    },
+    {
+      "id": "error:unknown-op",
+      "input": {
+        "rule": {
+          "op": "acme.nope"
+        }
+      },
+      "expect": {
+        "error": "UNKNOWN_REGISTRY_ENTRY"
+      }
+    },
+    {
+      "id": "error:unknown-fn",
+      "input": {
+        "rule": {
+          "op": "eq",
+          "left": {
+            "fn": "acme.nope"
+          },
+          "right": {
+            "literal": 1
+          }
+        }
+      },
+      "expect": {
+        "error": "UNKNOWN_REGISTRY_ENTRY"
+      }
+    },
+    {
+      "id": "error:bad-arity",
+      "input": {
+        "rule": {
+          "op": "eq",
+          "left": {
+            "fn": "subject.counter"
+          },
+          "right": {
+            "literal": 0
+          }
+        }
+      },
+      "expect": {
+        "error": "RULE_ERROR"
+      }
+    }
+  ]
+}

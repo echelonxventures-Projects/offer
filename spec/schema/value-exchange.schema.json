@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goip.spec/schema/value-exchange.schema.json",
+  "title": "ValueExchange",
+  "description": "The single stored record. A coupon is one of these. So is a cashback scheme, a government subsidy, an affiliate commission plan and a loyalty accrual rule. They differ in their data, never in their shape.",
+  "type": "object",
+  "required": ["id", "tenant", "profile", "name", "version", "state", "visibility", "acquisition", "scope", "benefits", "funding", "limits", "stacking", "priority", "governance", "metadata", "createdAt", "updatedAt", "createdBy"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "tenant": { "type": "string" },
+    "profile": {
+      "type": "string",
+      "description": "Family label for presentation and policy selection. NORMATIVE: no engine may branch on this value."
+    },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "version": { "type": "integer", "minimum": 1, "description": "Monotonic. Every published change mints a new version; grants and executions record the version they used." },
+    "state": { "$ref": "#/$defs/lifecycleState" },
+    "visibility": {
+      "enum": ["public", "targeted", "private"],
+      "description": "Governs DISCOVERY only, never applicability. A private exchange still applies when its conditions hold; what restricts it is conditions and acquisition."
+    },
+    "acquisition": { "$ref": "#/$defs/acquisition" },
+    "window": { "$ref": "#/$defs/temporalWindow" },
+    "scope": { "$ref": "#/$defs/scope" },
+    "conditions": { "$ref": "rule.schema.json#" },
+    "benefits": { "type": "array", "items": { "$ref": "#/$defs/benefit" } },
+    "funding": { "$ref": "#/$defs/funding" },
+    "limits": { "$ref": "#/$defs/limits" },
+    "stacking": { "$ref": "#/$defs/stacking" },
+    "priority": { "type": "integer", "description": "Application order and tie-breaks. Higher applies first." },
+    "attribution": { "$ref": "#/$defs/attribution" },
+    "governance": { "$ref": "#/$defs/governance" },
+    "metadata": { "type": "object" },
+    "createdAt": { "type": "string" },
+    "updatedAt": { "type": "string" },
+    "createdBy": { "type": "string" }
+  },
+  "$defs": {
+    "lifecycleState": {
+      "enum": ["draft", "in_review", "approved", "scheduled", "active", "paused", "exhausted", "expired", "archived"],
+      "description": "Only 'active' is redeemable."
+    },
+    "amount": {
+      "type": "object",
+      "description": "Exact integer money. `minor` is a decimal integer STRING, never a JSON number: a bare number is read as a double by default in every language and is silently wrong above 2^53.",
+      "required": ["unit", "minor", "scale"],
+      "additionalProperties": false,
+      "properties": {
+        "unit": { "type": "string" },
+        "minor": { "type": "string", "pattern": "^-?\\d+$" },
+        "scale": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "decimalAmount": {
+      "type": "object",
+      "description": "A human-authored amount, parsed against the unit's registered scale. More precision than the scale allows is an error, never a silent round.",
+      "required": ["unit", "decimal"],
+      "additionalProperties": false,
+      "properties": {
+        "unit": { "type": "string" },
+        "decimal": { "type": "string", "pattern": "^-?\\d+(\\.\\d+)?$" }
+      }
+    },
+    "acquisition": {
+      "type": "object",
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": ["automatic", "code", "issued", "earned", "referred"],
+          "description": "How a subject comes to hold this. 'issued', 'earned' and 'referred' require an identified subject holding a usable grant."
+        },
+        "code": { "type": "string", "description": "Matched case- and whitespace-insensitively." },
+        "codeSharing": { "enum": ["shared", "unique"] },
+        "requiresActivation": { "type": "boolean" }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Empty or absent means unrestricted in that dimension.",
+      "properties": {
+        "spatial": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "include": { "type": "array", "items": { "type": "string" } },
+            "exclude": { "type": "array", "items": { "type": "string" } }
+          },
+          "description": "Exclude always beats include."
+        },
+        "channels": { "type": "array", "items": { "type": "string" } },
+        "merchants": { "type": "array", "items": { "type": "string" } },
+        "realities": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "temporalWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Start inclusive, end exclusive.",
+      "properties": {
+        "from": { "$ref": "#/$defs/instant" },
+        "to": { "$ref": "#/$defs/instant" },
+        "calendar": { "type": "string" },
+        "zone": { "type": "string" },
+        "constraints": { "type": "array", "items": { "$ref": "#/$defs/fieldConstraint" } }
+      }
+    },
+    "instant": {
+      "type": "object",
+      "required": ["chronology", "tick"],
+      "additionalProperties": false,
+      "properties": {
+        "chronology": { "type": "string" },
+        "tick": { "type": "string", "pattern": "^-?\\d+$", "description": "Tick count as a decimal string, for the same reason as `minor`." }
+      }
+    },
+    "fieldConstraint": {
+      "type": "object",
+      "required": ["field"],
+      "additionalProperties": false,
+      "description": "Constrains a NAMED calendar field. The field names available depend entirely on the calendar: 'dayOfWeek' on Gregorian, 'sol' on a Martian one. Nothing assumes a week.",
+      "properties": {
+        "field": { "type": "string" },
+        "in": { "type": "array", "items": { "type": "integer" } },
+        "notIn": { "type": "array", "items": { "type": "integer" } },
+        "min": { "type": "integer" },
+        "max": { "type": "integer" },
+        "modulo": { "type": "integer" },
+        "remainder": { "type": "integer" }
+      }
+    },
+    "benefit": {
+      "type": "object",
+      "required": ["id", "type", "params", "effect"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "description": "Registry key: HOW MUCH value. percentage, flat, tiered, volume, fixed_price, free_quantity, item_grant, points_accrual, or a registered extension." },
+        "params": { "type": "object" },
+        "effect": { "type": "string", "description": "Registry key: WHAT the value does. price_reduction, deferred_credit, wallet_credit, points_grant, item_grant, fee_waiver, entitlement_grant, commission." },
+        "unit": { "type": "string", "description": "Only meaningful when the benefit type's unitPolicy is 'declared'. A 'base' type computing in a different unit is an error." },
+        "cap": { "type": "object", "required": ["decimal"], "properties": { "decimal": { "type": "string" }, "unit": { "type": "string" } } },
+        "rounding": { "enum": ["half_up", "half_down", "half_even", "up", "down", "ceiling", "floor"] },
+        "target": { "$ref": "#/$defs/benefitTarget" },
+        "maturitySeconds": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "benefitTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "skus": { "type": "array", "items": { "type": "string" }, "description": "Glob patterns, not regular expressions." },
+        "merchants": { "type": "array", "items": { "type": "string" } },
+        "select": { "enum": ["all", "cheapest", "most_expensive"] },
+        "maxLines": { "type": "integer", "minimum": 0 },
+        "maxQuantityPerLine": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "funding": {
+      "type": "object",
+      "required": ["model", "splits"],
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string", "description": "Registry key. Shipped strategies: proportional, waterfall." },
+        "splits": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["sourceId"],
+            "additionalProperties": false,
+            "properties": {
+              "sourceId": { "type": "string" },
+              "weight": { "type": "number", "minimum": 0 },
+              "cap": { "type": "object", "required": ["decimal"], "properties": { "decimal": { "type": "string" }, "unit": { "type": "string" } } }
+            }
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Checked at eligibility (advisory) and consumed at reserve (authoritative).",
+      "properties": {
+        "totalIssuance": { "type": "integer", "minimum": 0 },
+        "totalRedemptions": { "type": "integer", "minimum": 0 },
+        "perSubject": { "type": "integer", "minimum": 0 },
+        "perSubjectPerPeriod": {
+          "type": "object",
+          "required": ["max", "windowSeconds"],
+          "additionalProperties": false,
+          "properties": { "max": { "type": "integer", "minimum": 0 }, "windowSeconds": { "type": "number", "exclusiveMinimum": 0 } }
+        },
+        "totalBudget": { "$ref": "#/$defs/decimalAmount" },
+        "maxPerRedemption": { "$ref": "#/$defs/decimalAmount" },
+        "minimumBase": { "$ref": "#/$defs/decimalAmount" }
+      }
+    },
+    "stacking": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "exclusive": { "type": "boolean", "description": "If applied, nothing else may apply." },
+        "groups": { "type": "array", "items": { "type": "string" }, "description": "Exchanges sharing a group compete; the best one wins." },
+        "excludes": { "type": "array", "items": { "type": "string" } },
+        "combinesWith": { "type": "array", "items": { "type": "string" }, "description": "Overrides the group rule only when MUTUAL: both must name the other." },
+        "application": {
+          "enum": ["sequential", "parallel"],
+          "description": "sequential computes against what earlier benefits left; parallel against the original base. Cashback and commission are parallel, or a customer promised '5% back' receives less than 5%."
+        }
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "required": ["model"],
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string" },
+        "lookbackSeconds": { "type": "integer", "minimum": 0 },
+        "creditable": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "policies": { "type": "array", "items": { "type": "string" } },
+        "approvals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["by", "at"],
+            "additionalProperties": false,
+            "properties": { "by": { "type": "string" }, "at": { "type": "string" }, "note": { "type": "string" } }
+          },
+          "description": "A transition requiring approval needs one recorded by someone OTHER than createdBy."
+        },
+        "compliance": { "type": "array", "items": { "type": "string" } },
+        "owner": { "type": "string" }
+      }
+    }
+  }
+}

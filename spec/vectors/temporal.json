@@ -1,0 +1,624 @@
+{
+  "suite": "temporal",
+  "level": "L3",
+  "description": "Calendars publish named integer fields; nothing assumes a year, a week or a planet. Window bounds are inclusive at the start and exclusive at the end.",
+  "cases": [
+    {
+      "id": "gregorian@UTC:epoch",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "0"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 1970,
+          "month": 1,
+          "day": 1,
+          "hour": 0,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 4,
+          "dayOfYear": 1,
+          "quarter": 1
+        }
+      }
+    },
+    {
+      "id": "gregorian@Asia/Kolkata:epoch",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "Asia/Kolkata",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "0"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 1970,
+          "month": 1,
+          "day": 1,
+          "hour": 5,
+          "minute": 30,
+          "second": 0,
+          "dayOfWeek": 4,
+          "dayOfYear": 1,
+          "quarter": 1
+        }
+      }
+    },
+    {
+      "id": "fiscal.in@UTC:epoch",
+      "input": {
+        "calendar": "fiscal.in",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "0"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 1970,
+          "month": 1,
+          "day": 1,
+          "hour": 0,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 4,
+          "dayOfYear": 1,
+          "quarter": 1,
+          "fiscalYear": 1970,
+          "fiscalMonth": 10,
+          "fiscalQuarter": 4
+        }
+      }
+    },
+    {
+      "id": "gregorian@UTC:leap-day-2000",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "951782400000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 2000,
+          "month": 2,
+          "day": 29,
+          "hour": 0,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 2,
+          "dayOfYear": 60,
+          "quarter": 1
+        }
+      }
+    },
+    {
+      "id": "gregorian@Asia/Kolkata:leap-day-2000",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "Asia/Kolkata",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "951782400000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 2000,
+          "month": 2,
+          "day": 29,
+          "hour": 5,
+          "minute": 30,
+          "second": 0,
+          "dayOfWeek": 2,
+          "dayOfYear": 60,
+          "quarter": 1
+        }
+      }
+    },
+    {
+      "id": "fiscal.in@UTC:leap-day-2000",
+      "input": {
+        "calendar": "fiscal.in",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "951782400000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 2000,
+          "month": 2,
+          "day": 29,
+          "hour": 0,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 2,
+          "dayOfYear": 60,
+          "quarter": 1,
+          "fiscalYear": 2000,
+          "fiscalMonth": 11,
+          "fiscalQuarter": 4
+        }
+      }
+    },
+    {
+      "id": "gregorian@UTC:saturday-2026",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "1789813800000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 2026,
+          "month": 9,
+          "day": 19,
+          "hour": 10,
+          "minute": 30,
+          "second": 0,
+          "dayOfWeek": 6,
+          "dayOfYear": 262,
+          "quarter": 3
+        }
+      }
+    },
+    {
+      "id": "gregorian@Asia/Kolkata:saturday-2026",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "Asia/Kolkata",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "1789813800000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 2026,
+          "month": 9,
+          "day": 19,
+          "hour": 16,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 6,
+          "dayOfYear": 262,
+          "quarter": 3
+        }
+      }
+    },
+    {
+      "id": "fiscal.in@UTC:saturday-2026",
+      "input": {
+        "calendar": "fiscal.in",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "1789813800000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 2026,
+          "month": 9,
+          "day": 19,
+          "hour": 10,
+          "minute": 30,
+          "second": 0,
+          "dayOfWeek": 6,
+          "dayOfYear": 262,
+          "quarter": 3,
+          "fiscalYear": 2027,
+          "fiscalMonth": 6,
+          "fiscalQuarter": 2
+        }
+      }
+    },
+    {
+      "id": "gregorian@UTC:century-1900",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "-2203891200000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 1900,
+          "month": 3,
+          "day": 1,
+          "hour": 0,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 4,
+          "dayOfYear": 60,
+          "quarter": 1
+        }
+      }
+    },
+    {
+      "id": "gregorian@Asia/Kolkata:century-1900",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "Asia/Kolkata",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "-2203891200000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 1900,
+          "month": 3,
+          "day": 1,
+          "hour": 5,
+          "minute": 30,
+          "second": 0,
+          "dayOfWeek": 4,
+          "dayOfYear": 60,
+          "quarter": 1
+        }
+      }
+    },
+    {
+      "id": "fiscal.in@UTC:century-1900",
+      "input": {
+        "calendar": "fiscal.in",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "-2203891200000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 1900,
+          "month": 3,
+          "day": 1,
+          "hour": 0,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 4,
+          "dayOfYear": 60,
+          "quarter": 1,
+          "fiscalYear": 1900,
+          "fiscalMonth": 12,
+          "fiscalQuarter": 4
+        }
+      }
+    },
+    {
+      "id": "gregorian@UTC:pre-epoch",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "-14256000000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 1969,
+          "month": 7,
+          "day": 20,
+          "hour": 0,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 7,
+          "dayOfYear": 201,
+          "quarter": 3
+        }
+      }
+    },
+    {
+      "id": "gregorian@Asia/Kolkata:pre-epoch",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "Asia/Kolkata",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "-14256000000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 1969,
+          "month": 7,
+          "day": 20,
+          "hour": 5,
+          "minute": 30,
+          "second": 0,
+          "dayOfWeek": 7,
+          "dayOfYear": 201,
+          "quarter": 3
+        }
+      }
+    },
+    {
+      "id": "fiscal.in@UTC:pre-epoch",
+      "input": {
+        "calendar": "fiscal.in",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "-14256000000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 1969,
+          "month": 7,
+          "day": 20,
+          "hour": 0,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 7,
+          "dayOfYear": 201,
+          "quarter": 3,
+          "fiscalYear": 1970,
+          "fiscalMonth": 4,
+          "fiscalQuarter": 2
+        }
+      }
+    },
+    {
+      "id": "gregorian@UTC:year-end",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "1735689599000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 2024,
+          "month": 12,
+          "day": 31,
+          "hour": 23,
+          "minute": 59,
+          "second": 59,
+          "dayOfWeek": 2,
+          "dayOfYear": 366,
+          "quarter": 4
+        }
+      }
+    },
+    {
+      "id": "gregorian@Asia/Kolkata:year-end",
+      "input": {
+        "calendar": "gregorian",
+        "zone": "Asia/Kolkata",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "1735689599000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 2025,
+          "month": 1,
+          "day": 1,
+          "hour": 5,
+          "minute": 29,
+          "second": 59,
+          "dayOfWeek": 3,
+          "dayOfYear": 1,
+          "quarter": 1
+        }
+      }
+    },
+    {
+      "id": "fiscal.in@UTC:year-end",
+      "input": {
+        "calendar": "fiscal.in",
+        "zone": "UTC",
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "1735689599000"
+        }
+      },
+      "expect": {
+        "fields": {
+          "year": 2024,
+          "month": 12,
+          "day": 31,
+          "hour": 23,
+          "minute": 59,
+          "second": 59,
+          "dayOfWeek": 2,
+          "dayOfYear": 366,
+          "quarter": 4,
+          "fiscalYear": 2025,
+          "fiscalMonth": 9,
+          "fiscalQuarter": 3
+        }
+      }
+    },
+    {
+      "id": "mars:conversion-and-fields",
+      "note": "converting to a coarser tick floors; the loss is bounded by one target tick",
+      "input": {
+        "op": "convert",
+        "from": {
+          "chronology": "earth.unix.ms",
+          "tick": "1789813800000"
+        },
+        "to": "mars.sol.msd"
+      },
+      "expect": {
+        "instant": {
+          "chronology": "mars.sol.msd",
+          "tick": "54288479"
+        },
+        "fields": {
+          "sol": 54288,
+          "millisol": 479,
+          "marsYear": 81,
+          "solOfYear": 132
+        }
+      }
+    },
+    {
+      "id": "window:inside-saturday",
+      "input": {
+        "op": "contains",
+        "window": {
+          "from": {
+            "chronology": "earth.unix.ms",
+            "tick": "1767225600000"
+          },
+          "to": {
+            "chronology": "earth.unix.ms",
+            "tick": "1798761600000"
+          },
+          "calendar": "gregorian",
+          "constraints": [
+            {
+              "field": "dayOfWeek",
+              "in": [
+                6,
+                7
+              ]
+            }
+          ]
+        },
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "1789776000000"
+        }
+      },
+      "expect": {
+        "verdict": {
+          "inside": true
+        }
+      }
+    },
+    {
+      "id": "window:outside-monday",
+      "input": {
+        "op": "contains",
+        "window": {
+          "from": {
+            "chronology": "earth.unix.ms",
+            "tick": "1767225600000"
+          },
+          "to": {
+            "chronology": "earth.unix.ms",
+            "tick": "1798761600000"
+          },
+          "calendar": "gregorian",
+          "constraints": [
+            {
+              "field": "dayOfWeek",
+              "in": [
+                6,
+                7
+              ]
+            }
+          ]
+        },
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "1789948800000"
+        }
+      },
+      "expect": {
+        "verdict": {
+          "inside": false,
+          "reason": "calendar field 'dayOfWeek' outside constraint"
+        }
+      }
+    },
+    {
+      "id": "window:before-start",
+      "input": {
+        "op": "contains",
+        "window": {
+          "from": {
+            "chronology": "earth.unix.ms",
+            "tick": "1767225600000"
+          },
+          "to": {
+            "chronology": "earth.unix.ms",
+            "tick": "1798761600000"
+          },
+          "calendar": "gregorian",
+          "constraints": [
+            {
+              "field": "dayOfWeek",
+              "in": [
+                6,
+                7
+              ]
+            }
+          ]
+        },
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "1748736000000"
+        }
+      },
+      "expect": {
+        "verdict": {
+          "inside": false,
+          "reason": "before window start"
+        }
+      }
+    },
+    {
+      "id": "window:after-end",
+      "input": {
+        "op": "contains",
+        "window": {
+          "from": {
+            "chronology": "earth.unix.ms",
+            "tick": "1767225600000"
+          },
+          "to": {
+            "chronology": "earth.unix.ms",
+            "tick": "1798761600000"
+          },
+          "calendar": "gregorian",
+          "constraints": [
+            {
+              "field": "dayOfWeek",
+              "in": [
+                6,
+                7
+              ]
+            }
+          ]
+        },
+        "instant": {
+          "chronology": "earth.unix.ms",
+          "tick": "1811808000000"
+        }
+      },
+      "expect": {
+        "verdict": {
+          "inside": false,
+          "reason": "at or after window end"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,318 @@
+{
+  "suite": "spatial",
+  "level": "L3",
+  "description": "Containment over a node tree. Exclude always beats include. The node table is supplied with the vectors, so an implementation needs no built-in geography - which is the point.",
+  "cases": [
+    {
+      "id": "__nodes__",
+      "input": {
+        "nodes": [
+          {
+            "key": "sol",
+            "label": "Sol system",
+            "kind": "system"
+          },
+          {
+            "key": "earth",
+            "label": "Earth",
+            "kind": "body",
+            "parent": "sol"
+          },
+          {
+            "key": "earth.in",
+            "label": "India",
+            "kind": "territory",
+            "parent": "earth",
+            "jurisdiction": "IN"
+          },
+          {
+            "key": "earth.in.br",
+            "label": "Bihar",
+            "kind": "region",
+            "parent": "earth.in",
+            "jurisdiction": "IN-BR"
+          },
+          {
+            "key": "earth.in.br.patna",
+            "label": "Patna",
+            "kind": "locality",
+            "parent": "earth.in.br"
+          },
+          {
+            "key": "earth.in.br.patna.store-01",
+            "label": "Patna Store 01",
+            "kind": "site",
+            "parent": "earth.in.br.patna"
+          },
+          {
+            "key": "earth.in.mh",
+            "label": "Maharashtra",
+            "kind": "region",
+            "parent": "earth.in",
+            "jurisdiction": "IN-MH"
+          },
+          {
+            "key": "earth.in.mh.mumbai",
+            "label": "Mumbai",
+            "kind": "locality",
+            "parent": "earth.in.mh"
+          },
+          {
+            "key": "earth.us",
+            "label": "United States",
+            "kind": "territory",
+            "parent": "earth",
+            "jurisdiction": "US"
+          },
+          {
+            "key": "earth.us.ny",
+            "label": "New York",
+            "kind": "region",
+            "parent": "earth.us",
+            "jurisdiction": "US-NY"
+          },
+          {
+            "key": "luna",
+            "label": "Luna",
+            "kind": "body",
+            "parent": "sol"
+          },
+          {
+            "key": "luna.alpha",
+            "label": "Colony Alpha",
+            "kind": "territory",
+            "parent": "luna",
+            "jurisdiction": "LUNA-ACC"
+          },
+          {
+            "key": "mars",
+            "label": "Mars",
+            "kind": "body",
+            "parent": "sol"
+          },
+          {
+            "key": "mars.olympus",
+            "label": "Olympus Territory",
+            "kind": "territory",
+            "parent": "mars",
+            "jurisdiction": "MARS-OT"
+          },
+          {
+            "key": "mars.olympus.sector-7",
+            "label": "Sector 7",
+            "kind": "region",
+            "parent": "mars.olympus"
+          },
+          {
+            "key": "net.marketplace",
+            "label": "Marketplace surface",
+            "kind": "virtual"
+          },
+          {
+            "key": "net.marketplace.app",
+            "label": "Marketplace mobile app",
+            "kind": "virtual",
+            "parent": "net.marketplace"
+          }
+        ]
+      },
+      "expect": {}
+    },
+    {
+      "id": "unscoped",
+      "input": {
+        "scope": {},
+        "place": "mars.olympus"
+      },
+      "expect": {
+        "verdict": {
+          "inside": true
+        }
+      }
+    },
+    {
+      "id": "include-country",
+      "input": {
+        "scope": {
+          "include": [
+            "earth.in"
+          ]
+        },
+        "place": "earth.in.br.patna"
+      },
+      "expect": {
+        "verdict": {
+          "inside": true,
+          "matchedBy": "earth.in"
+        }
+      }
+    },
+    {
+      "id": "include-miss",
+      "input": {
+        "scope": {
+          "include": [
+            "earth.in"
+          ]
+        },
+        "place": "earth.us.ny"
+      },
+      "expect": {
+        "verdict": {
+          "inside": false
+        }
+      }
+    },
+    {
+      "id": "exclude-beats-include",
+      "input": {
+        "scope": {
+          "include": [
+            "earth.in"
+          ],
+          "exclude": [
+            "earth.in.mh.mumbai"
+          ]
+        },
+        "place": "earth.in.mh.mumbai"
+      },
+      "expect": {
+        "verdict": {
+          "inside": false,
+          "excludedBy": "earth.in.mh.mumbai"
+        }
+      }
+    },
+    {
+      "id": "exclude-sibling-unaffected",
+      "input": {
+        "scope": {
+          "include": [
+            "earth.in"
+          ],
+          "exclude": [
+            "earth.in.mh.mumbai"
+          ]
+        },
+        "place": "earth.in.br.patna"
+      },
+      "expect": {
+        "verdict": {
+          "inside": true,
+          "matchedBy": "earth.in"
+        }
+      }
+    },
+    {
+      "id": "self-containment",
+      "input": {
+        "scope": {
+          "include": [
+            "earth.in.br.patna"
+          ]
+        },
+        "place": "earth.in.br.patna"
+      },
+      "expect": {
+        "verdict": {
+          "inside": true,
+          "matchedBy": "earth.in.br.patna"
+        }
+      }
+    },
+    {
+      "id": "virtual-outside-physical",
+      "input": {
+        "scope": {
+          "include": [
+            "earth"
+          ]
+        },
+        "place": "net.marketplace.app"
+      },
+      "expect": {
+        "verdict": {
+          "inside": false
+        }
+      }
+    },
+    {
+      "id": "off-world",
+      "input": {
+        "scope": {
+          "include": [
+            "mars.olympus"
+          ]
+        },
+        "place": "mars.olympus.sector-7"
+      },
+      "expect": {
+        "verdict": {
+          "inside": true,
+          "matchedBy": "mars.olympus"
+        }
+      }
+    },
+    {
+      "id": "path:earth.in.br.patna.store-01",
+      "input": {
+        "op": "path",
+        "key": "earth.in.br.patna.store-01"
+      },
+      "expect": {
+        "path": [
+          "sol",
+          "earth",
+          "earth.in",
+          "earth.in.br",
+          "earth.in.br.patna",
+          "earth.in.br.patna.store-01"
+        ],
+        "jurisdiction": "IN-BR"
+      }
+    },
+    {
+      "id": "path:mars.olympus.sector-7",
+      "input": {
+        "op": "path",
+        "key": "mars.olympus.sector-7"
+      },
+      "expect": {
+        "path": [
+          "sol",
+          "mars",
+          "mars.olympus",
+          "mars.olympus.sector-7"
+        ],
+        "jurisdiction": "MARS-OT"
+      }
+    },
+    {
+      "id": "path:net.marketplace.app",
+      "input": {
+        "op": "path",
+        "key": "net.marketplace.app"
+      },
+      "expect": {
+        "path": [
+          "net.marketplace",
+          "net.marketplace.app"
+        ],
+        "jurisdiction": null
+      }
+    },
+    {
+      "id": "path:sol",
+      "input": {
+        "op": "path",
+        "key": "sol"
+      },
+      "expect": {
+        "path": [
+          "sol"
+        ],
+        "jurisdiction": null
+      }
+    }
+  ]
+}

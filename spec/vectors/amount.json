@@ -1,0 +1,1755 @@
+{
+  "suite": "amount",
+  "level": "L2",
+  "description": "Exact integer money. Every rounding mode over positive and negative operands, percentages as exact rationals, and the refusals that keep units from mixing.",
+  "cases": [
+    {
+      "id": "parse:12.34@2",
+      "input": {
+        "op": "fromDecimal",
+        "unit": "X",
+        "decimal": "12.34",
+        "scale": 2
+      },
+      "expect": {
+        "amount": {
+          "unit": "X",
+          "minor": "1234",
+          "scale": 2
+        },
+        "toDecimal": "12.34"
+      }
+    },
+    {
+      "id": "parse:0.001@3",
+      "input": {
+        "op": "fromDecimal",
+        "unit": "X",
+        "decimal": "0.001",
+        "scale": 3
+      },
+      "expect": {
+        "amount": {
+          "unit": "X",
+          "minor": "1",
+          "scale": 3
+        },
+        "toDecimal": "0.001"
+      }
+    },
+    {
+      "id": "parse:100@0",
+      "input": {
+        "op": "fromDecimal",
+        "unit": "X",
+        "decimal": "100",
+        "scale": 0
+      },
+      "expect": {
+        "amount": {
+          "unit": "X",
+          "minor": "100",
+          "scale": 0
+        },
+        "toDecimal": "100"
+      }
+    },
+    {
+      "id": "parse:-5.50@2",
+      "input": {
+        "op": "fromDecimal",
+        "unit": "X",
+        "decimal": "-5.50",
+        "scale": 2
+      },
+      "expect": {
+        "amount": {
+          "unit": "X",
+          "minor": "-550",
+          "scale": 2
+        },
+        "toDecimal": "-5.50"
+      }
+    },
+    {
+      "id": "parse:0@2",
+      "input": {
+        "op": "fromDecimal",
+        "unit": "X",
+        "decimal": "0",
+        "scale": 2
+      },
+      "expect": {
+        "amount": {
+          "unit": "X",
+          "minor": "0",
+          "scale": 2
+        },
+        "toDecimal": "0.00"
+      }
+    },
+    {
+      "id": "parse:92233720368547.75@2",
+      "input": {
+        "op": "fromDecimal",
+        "unit": "X",
+        "decimal": "92233720368547.75",
+        "scale": 2
+      },
+      "expect": {
+        "amount": {
+          "unit": "X",
+          "minor": "9223372036854775",
+          "scale": 2
+        },
+        "toDecimal": "92233720368547.75"
+      }
+    },
+    {
+      "id": "parse:1.2300@2",
+      "input": {
+        "op": "fromDecimal",
+        "unit": "X",
+        "decimal": "1.2300",
+        "scale": 2
+      },
+      "expect": {
+        "amount": {
+          "unit": "X",
+          "minor": "123",
+          "scale": 2
+        },
+        "toDecimal": "1.23"
+      }
+    },
+    {
+      "id": "parse:too-much-precision",
+      "note": "more precision than the unit's scale is an error, never a silent round",
+      "input": {
+        "op": "fromDecimal",
+        "unit": "USD",
+        "decimal": "1.005",
+        "scale": 2
+      },
+      "expect": {
+        "throws": true
+      }
+    },
+    {
+      "id": "divideRound:5/2:half_up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "5",
+        "denominator": "2",
+        "mode": "half_up"
+      },
+      "expect": {
+        "result": "3"
+      }
+    },
+    {
+      "id": "divideRound:5/2:half_down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "5",
+        "denominator": "2",
+        "mode": "half_down"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:5/2:half_even",
+      "input": {
+        "op": "divideRound",
+        "numerator": "5",
+        "denominator": "2",
+        "mode": "half_even"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:5/2:up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "5",
+        "denominator": "2",
+        "mode": "up"
+      },
+      "expect": {
+        "result": "3"
+      }
+    },
+    {
+      "id": "divideRound:5/2:down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "5",
+        "denominator": "2",
+        "mode": "down"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:5/2:ceiling",
+      "input": {
+        "op": "divideRound",
+        "numerator": "5",
+        "denominator": "2",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "result": "3"
+      }
+    },
+    {
+      "id": "divideRound:5/2:floor",
+      "input": {
+        "op": "divideRound",
+        "numerator": "5",
+        "denominator": "2",
+        "mode": "floor"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:7/2:half_up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "7",
+        "denominator": "2",
+        "mode": "half_up"
+      },
+      "expect": {
+        "result": "4"
+      }
+    },
+    {
+      "id": "divideRound:7/2:half_down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "7",
+        "denominator": "2",
+        "mode": "half_down"
+      },
+      "expect": {
+        "result": "3"
+      }
+    },
+    {
+      "id": "divideRound:7/2:half_even",
+      "input": {
+        "op": "divideRound",
+        "numerator": "7",
+        "denominator": "2",
+        "mode": "half_even"
+      },
+      "expect": {
+        "result": "4"
+      }
+    },
+    {
+      "id": "divideRound:7/2:up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "7",
+        "denominator": "2",
+        "mode": "up"
+      },
+      "expect": {
+        "result": "4"
+      }
+    },
+    {
+      "id": "divideRound:7/2:down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "7",
+        "denominator": "2",
+        "mode": "down"
+      },
+      "expect": {
+        "result": "3"
+      }
+    },
+    {
+      "id": "divideRound:7/2:ceiling",
+      "input": {
+        "op": "divideRound",
+        "numerator": "7",
+        "denominator": "2",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "result": "4"
+      }
+    },
+    {
+      "id": "divideRound:7/2:floor",
+      "input": {
+        "op": "divideRound",
+        "numerator": "7",
+        "denominator": "2",
+        "mode": "floor"
+      },
+      "expect": {
+        "result": "3"
+      }
+    },
+    {
+      "id": "divideRound:-5/2:half_up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-5",
+        "denominator": "2",
+        "mode": "half_up"
+      },
+      "expect": {
+        "result": "-3"
+      }
+    },
+    {
+      "id": "divideRound:-5/2:half_down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-5",
+        "denominator": "2",
+        "mode": "half_down"
+      },
+      "expect": {
+        "result": "-2"
+      }
+    },
+    {
+      "id": "divideRound:-5/2:half_even",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-5",
+        "denominator": "2",
+        "mode": "half_even"
+      },
+      "expect": {
+        "result": "-2"
+      }
+    },
+    {
+      "id": "divideRound:-5/2:up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-5",
+        "denominator": "2",
+        "mode": "up"
+      },
+      "expect": {
+        "result": "-3"
+      }
+    },
+    {
+      "id": "divideRound:-5/2:down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-5",
+        "denominator": "2",
+        "mode": "down"
+      },
+      "expect": {
+        "result": "-2"
+      }
+    },
+    {
+      "id": "divideRound:-5/2:ceiling",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-5",
+        "denominator": "2",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "result": "-2"
+      }
+    },
+    {
+      "id": "divideRound:-5/2:floor",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-5",
+        "denominator": "2",
+        "mode": "floor"
+      },
+      "expect": {
+        "result": "-3"
+      }
+    },
+    {
+      "id": "divideRound:1/3:half_up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "1",
+        "denominator": "3",
+        "mode": "half_up"
+      },
+      "expect": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "divideRound:1/3:half_down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "1",
+        "denominator": "3",
+        "mode": "half_down"
+      },
+      "expect": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "divideRound:1/3:half_even",
+      "input": {
+        "op": "divideRound",
+        "numerator": "1",
+        "denominator": "3",
+        "mode": "half_even"
+      },
+      "expect": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "divideRound:1/3:up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "1",
+        "denominator": "3",
+        "mode": "up"
+      },
+      "expect": {
+        "result": "1"
+      }
+    },
+    {
+      "id": "divideRound:1/3:down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "1",
+        "denominator": "3",
+        "mode": "down"
+      },
+      "expect": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "divideRound:1/3:ceiling",
+      "input": {
+        "op": "divideRound",
+        "numerator": "1",
+        "denominator": "3",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "result": "1"
+      }
+    },
+    {
+      "id": "divideRound:1/3:floor",
+      "input": {
+        "op": "divideRound",
+        "numerator": "1",
+        "denominator": "3",
+        "mode": "floor"
+      },
+      "expect": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "divideRound:-1/3:half_up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-1",
+        "denominator": "3",
+        "mode": "half_up"
+      },
+      "expect": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "divideRound:-1/3:half_down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-1",
+        "denominator": "3",
+        "mode": "half_down"
+      },
+      "expect": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "divideRound:-1/3:half_even",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-1",
+        "denominator": "3",
+        "mode": "half_even"
+      },
+      "expect": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "divideRound:-1/3:up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-1",
+        "denominator": "3",
+        "mode": "up"
+      },
+      "expect": {
+        "result": "-1"
+      }
+    },
+    {
+      "id": "divideRound:-1/3:down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-1",
+        "denominator": "3",
+        "mode": "down"
+      },
+      "expect": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "divideRound:-1/3:ceiling",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-1",
+        "denominator": "3",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "divideRound:-1/3:floor",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-1",
+        "denominator": "3",
+        "mode": "floor"
+      },
+      "expect": {
+        "result": "-1"
+      }
+    },
+    {
+      "id": "divideRound:10/5:half_up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "10",
+        "denominator": "5",
+        "mode": "half_up"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:10/5:half_down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "10",
+        "denominator": "5",
+        "mode": "half_down"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:10/5:half_even",
+      "input": {
+        "op": "divideRound",
+        "numerator": "10",
+        "denominator": "5",
+        "mode": "half_even"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:10/5:up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "10",
+        "denominator": "5",
+        "mode": "up"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:10/5:down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "10",
+        "denominator": "5",
+        "mode": "down"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:10/5:ceiling",
+      "input": {
+        "op": "divideRound",
+        "numerator": "10",
+        "denominator": "5",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:10/5:floor",
+      "input": {
+        "op": "divideRound",
+        "numerator": "10",
+        "denominator": "5",
+        "mode": "floor"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:-10/5:half_up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-10",
+        "denominator": "5",
+        "mode": "half_up"
+      },
+      "expect": {
+        "result": "-2"
+      }
+    },
+    {
+      "id": "divideRound:-10/5:half_down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-10",
+        "denominator": "5",
+        "mode": "half_down"
+      },
+      "expect": {
+        "result": "-2"
+      }
+    },
+    {
+      "id": "divideRound:-10/5:half_even",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-10",
+        "denominator": "5",
+        "mode": "half_even"
+      },
+      "expect": {
+        "result": "-2"
+      }
+    },
+    {
+      "id": "divideRound:-10/5:up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-10",
+        "denominator": "5",
+        "mode": "up"
+      },
+      "expect": {
+        "result": "-2"
+      }
+    },
+    {
+      "id": "divideRound:-10/5:down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-10",
+        "denominator": "5",
+        "mode": "down"
+      },
+      "expect": {
+        "result": "-2"
+      }
+    },
+    {
+      "id": "divideRound:-10/5:ceiling",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-10",
+        "denominator": "5",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "result": "-2"
+      }
+    },
+    {
+      "id": "divideRound:-10/5:floor",
+      "input": {
+        "op": "divideRound",
+        "numerator": "-10",
+        "denominator": "5",
+        "mode": "floor"
+      },
+      "expect": {
+        "result": "-2"
+      }
+    },
+    {
+      "id": "divideRound:3/2:half_up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "3",
+        "denominator": "2",
+        "mode": "half_up"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:3/2:half_down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "3",
+        "denominator": "2",
+        "mode": "half_down"
+      },
+      "expect": {
+        "result": "1"
+      }
+    },
+    {
+      "id": "divideRound:3/2:half_even",
+      "input": {
+        "op": "divideRound",
+        "numerator": "3",
+        "denominator": "2",
+        "mode": "half_even"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:3/2:up",
+      "input": {
+        "op": "divideRound",
+        "numerator": "3",
+        "denominator": "2",
+        "mode": "up"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:3/2:down",
+      "input": {
+        "op": "divideRound",
+        "numerator": "3",
+        "denominator": "2",
+        "mode": "down"
+      },
+      "expect": {
+        "result": "1"
+      }
+    },
+    {
+      "id": "divideRound:3/2:ceiling",
+      "input": {
+        "op": "divideRound",
+        "numerator": "3",
+        "denominator": "2",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "result": "2"
+      }
+    },
+    {
+      "id": "divideRound:3/2:floor",
+      "input": {
+        "op": "divideRound",
+        "numerator": "3",
+        "denominator": "2",
+        "mode": "floor"
+      },
+      "expect": {
+        "result": "1"
+      }
+    },
+    {
+      "id": "percent:12.5%of12.34:half_up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1234",
+          "scale": 2
+        },
+        "percent": "12.5",
+        "mode": "half_up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "154",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:12.5%of12.34:half_down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1234",
+          "scale": 2
+        },
+        "percent": "12.5",
+        "mode": "half_down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "154",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:12.5%of12.34:half_even",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1234",
+          "scale": 2
+        },
+        "percent": "12.5",
+        "mode": "half_even"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "154",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:12.5%of12.34:up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1234",
+          "scale": 2
+        },
+        "percent": "12.5",
+        "mode": "up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "155",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:12.5%of12.34:down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1234",
+          "scale": 2
+        },
+        "percent": "12.5",
+        "mode": "down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "154",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:12.5%of12.34:ceiling",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1234",
+          "scale": 2
+        },
+        "percent": "12.5",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "155",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:12.5%of12.34:floor",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1234",
+          "scale": 2
+        },
+        "percent": "12.5",
+        "mode": "floor"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "154",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:10%of0.30:half_up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "30",
+          "scale": 2
+        },
+        "percent": "10",
+        "mode": "half_up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:10%of0.30:half_down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "30",
+          "scale": 2
+        },
+        "percent": "10",
+        "mode": "half_down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:10%of0.30:half_even",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "30",
+          "scale": 2
+        },
+        "percent": "10",
+        "mode": "half_even"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:10%of0.30:up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "30",
+          "scale": 2
+        },
+        "percent": "10",
+        "mode": "up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:10%of0.30:down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "30",
+          "scale": 2
+        },
+        "percent": "10",
+        "mode": "down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:10%of0.30:ceiling",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "30",
+          "scale": 2
+        },
+        "percent": "10",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:10%of0.30:floor",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "30",
+          "scale": 2
+        },
+        "percent": "10",
+        "mode": "floor"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:33.333%of100.00:half_up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "percent": "33.333",
+        "mode": "half_up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3333",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:33.333%of100.00:half_down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "percent": "33.333",
+        "mode": "half_down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3333",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:33.333%of100.00:half_even",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "percent": "33.333",
+        "mode": "half_even"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3333",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:33.333%of100.00:up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "percent": "33.333",
+        "mode": "up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3334",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:33.333%of100.00:down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "percent": "33.333",
+        "mode": "down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3333",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:33.333%of100.00:ceiling",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "percent": "33.333",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3334",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:33.333%of100.00:floor",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "percent": "33.333",
+        "mode": "floor"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "3333",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:15%of1097.00:half_up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "109700",
+          "scale": 2
+        },
+        "percent": "15",
+        "mode": "half_up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "16455",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:15%of1097.00:half_down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "109700",
+          "scale": 2
+        },
+        "percent": "15",
+        "mode": "half_down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "16455",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:15%of1097.00:half_even",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "109700",
+          "scale": 2
+        },
+        "percent": "15",
+        "mode": "half_even"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "16455",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:15%of1097.00:up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "109700",
+          "scale": 2
+        },
+        "percent": "15",
+        "mode": "up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "16455",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:15%of1097.00:down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "109700",
+          "scale": 2
+        },
+        "percent": "15",
+        "mode": "down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "16455",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:15%of1097.00:ceiling",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "109700",
+          "scale": 2
+        },
+        "percent": "15",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "16455",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:15%of1097.00:floor",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "109700",
+          "scale": 2
+        },
+        "percent": "15",
+        "mode": "floor"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "16455",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:5%of40000.00:half_up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "4000000",
+          "scale": 2
+        },
+        "percent": "5",
+        "mode": "half_up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "200000",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:5%of40000.00:half_down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "4000000",
+          "scale": 2
+        },
+        "percent": "5",
+        "mode": "half_down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "200000",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:5%of40000.00:half_even",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "4000000",
+          "scale": 2
+        },
+        "percent": "5",
+        "mode": "half_even"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "200000",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:5%of40000.00:up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "4000000",
+          "scale": 2
+        },
+        "percent": "5",
+        "mode": "up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "200000",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:5%of40000.00:down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "4000000",
+          "scale": 2
+        },
+        "percent": "5",
+        "mode": "down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "200000",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:5%of40000.00:ceiling",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "4000000",
+          "scale": 2
+        },
+        "percent": "5",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "200000",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:5%of40000.00:floor",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "4000000",
+          "scale": 2
+        },
+        "percent": "5",
+        "mode": "floor"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "200000",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:50%of0.01:half_up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1",
+          "scale": 2
+        },
+        "percent": "50",
+        "mode": "half_up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "1",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:50%of0.01:half_down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1",
+          "scale": 2
+        },
+        "percent": "50",
+        "mode": "half_down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "0",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:50%of0.01:half_even",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1",
+          "scale": 2
+        },
+        "percent": "50",
+        "mode": "half_even"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "0",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:50%of0.01:up",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1",
+          "scale": 2
+        },
+        "percent": "50",
+        "mode": "up"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "1",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:50%of0.01:down",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1",
+          "scale": 2
+        },
+        "percent": "50",
+        "mode": "down"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "0",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:50%of0.01:ceiling",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1",
+          "scale": 2
+        },
+        "percent": "50",
+        "mode": "ceiling"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "1",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "percent:50%of0.01:floor",
+      "input": {
+        "op": "multiplyRate",
+        "amount": {
+          "unit": "USD",
+          "minor": "1",
+          "scale": 2
+        },
+        "percent": "50",
+        "mode": "floor"
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "0",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "add",
+      "input": {
+        "op": "add",
+        "left": {
+          "unit": "USD",
+          "minor": "111",
+          "scale": 2
+        },
+        "right": {
+          "unit": "USD",
+          "minor": "222",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "333",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "subtract-into-negative",
+      "input": {
+        "op": "subtract",
+        "left": {
+          "unit": "USD",
+          "minor": "111",
+          "scale": 2
+        },
+        "right": {
+          "unit": "USD",
+          "minor": "300",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "amount": {
+          "unit": "USD",
+          "minor": "-189",
+          "scale": 2
+        }
+      }
+    },
+    {
+      "id": "add-unit-mismatch",
+      "note": "mixing units is an error, not a coercion",
+      "input": {
+        "op": "add",
+        "left": {
+          "unit": "USD",
+          "minor": "111",
+          "scale": 2
+        },
+        "right": {
+          "unit": "EUR",
+          "minor": "100",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "error": "UNIT_MISMATCH"
+      }
+    },
+    {
+      "id": "add-scale-mismatch",
+      "input": {
+        "op": "add",
+        "left": {
+          "unit": "USD",
+          "minor": "111",
+          "scale": 2
+        },
+        "right": {
+          "unit": "USD",
+          "minor": "100",
+          "scale": 3
+        }
+      },
+      "expect": {
+        "error": "UNIT_MISMATCH"
+      }
+    },
+    {
+      "id": "compare-across-sign",
+      "input": {
+        "op": "compare",
+        "left": {
+          "unit": "USD",
+          "minor": "-100",
+          "scale": 2
+        },
+        "right": {
+          "unit": "USD",
+          "minor": "111",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "ordering": -1
+      }
+    }
+  ]
+}

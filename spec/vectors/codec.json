@@ -1,0 +1,80 @@
+{
+  "suite": "codec",
+  "level": "L1",
+  "description": "Wire codec. `~bigint:N` decodes to an exact integer; a literal string starting with the tag is escaped as `~esc:` so the round trip is lossless for every input.",
+  "cases": [
+    {
+      "id": "plain",
+      "input": {
+        "encoded": "{\"a\":1,\"b\":\"x\"}"
+      },
+      "expect": {
+        "reEncoded": "{\"a\":1,\"b\":\"x\"}"
+      }
+    },
+    {
+      "id": "bigint",
+      "input": {
+        "encoded": "{\"v\":\"~bigint:1234\"}"
+      },
+      "expect": {
+        "reEncoded": "{\"v\":\"~bigint:1234\"}"
+      }
+    },
+    {
+      "id": "bigint-negative",
+      "input": {
+        "encoded": "{\"v\":\"~bigint:-1234\"}"
+      },
+      "expect": {
+        "reEncoded": "{\"v\":\"~bigint:-1234\"}"
+      }
+    },
+    {
+      "id": "bigint-huge",
+      "input": {
+        "encoded": "{\"v\":\"~bigint:123456789012345678901234567890\"}"
+      },
+      "expect": {
+        "reEncoded": "{\"v\":\"~bigint:123456789012345678901234567890\"}"
+      }
+    },
+    {
+      "id": "escaped-literal",
+      "note": "a plain string that looks like a tag must survive",
+      "input": {
+        "encoded": "{\"v\":\"~esc:~bigint:9\"}"
+      },
+      "expect": {
+        "reEncoded": "{\"v\":\"~esc:~bigint:9\"}"
+      }
+    },
+    {
+      "id": "nested",
+      "input": {
+        "encoded": "{\"a\":[{\"b\":\"~bigint:5\"}]}"
+      },
+      "expect": {
+        "reEncoded": "{\"a\":[{\"b\":\"~bigint:5\"}]}"
+      }
+    },
+    {
+      "id": "array-of-bigints",
+      "input": {
+        "encoded": "[\"~bigint:1\",\"~bigint:2\"]"
+      },
+      "expect": {
+        "reEncoded": "[\"~bigint:1\",\"~bigint:2\"]"
+      }
+    },
+    {
+      "id": "null",
+      "input": {
+        "encoded": "{\"a\":null}"
+      },
+      "expect": {
+        "reEncoded": "{\"a\":null}"
+      }
+    }
+  ]
+}

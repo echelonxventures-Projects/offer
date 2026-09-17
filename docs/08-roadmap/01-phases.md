@@ -61,28 +61,38 @@ adapter choice).
 **What Phase 1 did *not* do:** a PostgreSQL adapter. The conformance suite now
 exists to hold one to account, which is the right order.
 
-## Phase 1b — Make it language-agnostic
+## Phase 1b — Make it language-agnostic ✅ **COMPLETE**
 
 **Goal: the contract is portable, not just the storage.**
 
-The implementation is TypeScript and something has to be. What can be neutral is
-the *specification*, so a Go or Java or Python implementation can be written and
-checked rather than merely intended.
-
-| Work | Why |
+| Work | Status |
 | --- | --- |
-| JSON Schema for the data model | `ValueExchange` and every part of it, as a language-neutral schema |
-| Rule language grammar | The condition AST, written down independently of its evaluator |
-| Canonical encoding spec | Hashing and wire form, including the `~bigint:` convention |
-| Error vocabulary | The codes, as data |
-| **Conformance vectors** | JSON in, expected JSON out, that any implementation must reproduce |
-| Capability contract | OpenAPI, generated from the descriptors |
+| Conformance vectors | ✅ 11 suites, **289 cases**, committed and drift-checked |
+| JSON Schema for the data model | ✅ `spec/schema/value-exchange.schema.json`, `rule.schema.json` |
+| Canonical encoding spec | ✅ `spec/encoding.md`, including the number-formatting trap |
+| Rule language spec | ✅ `spec/rule-language.md` — normative parts only |
+| Error vocabulary as data | ✅ `spec/errors.json`, with the normative limit-check order |
+| Storage contract | ✅ `spec/storage-contract.md` — the L5 obligations vectors cannot express |
+| **Second implementation** | ✅ **Go, L1–L4, passing all 289 cases** |
 
-The vectors are the part that makes this real. Documentation of a rule engine is
-a wish; a file of inputs and exact expected outputs is a test any language can
-run. The pure layers — amounts, allocation, rules, limits, benefit computation,
-attribution — are all already free of I/O, which is what makes them
-vector-testable.
+**Exit criterion: met.** `npm run conformance` runs an independent Go
+implementation — no shared code, standard library only — against the same vector
+files. It reproduces every case exactly: SHA-256 hashes, all seven rounding
+modes over both signs, the allocator's remainder ordering, proleptic Gregorian
+and Martian calendars, the full rule evaluator with traces, all eight benefit
+handlers, and all five attribution models.
+
+Writing it found two real defects that re-reading the TypeScript would not have:
+an operator that was not a pure function of the context, and a vector that could
+not survive JSON. Both are written up in
+[ADR 0013](../06-adr/0013-conformance-vectors-as-the-portability-contract.md).
+
+**Still open from this phase:** an OpenAPI contract generated from the capability
+descriptors. Deferred to Phase 3, where the HTTP layer is built.
+
+What remains TypeScript-specific: L5. Storage and concurrency are specified as
+obligations rather than vectors, because no input/output pair can express "and
+no other caller observed an intermediate state".
 
 ## Phase 2 — Make it operable
 

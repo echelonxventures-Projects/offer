@@ -21,9 +21,12 @@
     "example:stacking": "node examples/06-stacking-conflict.ts",
     "docs:registries": "node tools/generate-registry-reference.ts",
     "docs:check": "node tools/generate-registry-reference.ts --check",
-    "verify": "npm run typecheck && npm test && npm run docs:check && npm run demo > /dev/null && echo 'verify: all checks passed'",
+    "verify": "npm run typecheck && npm test && npm run docs:check && npm run vectors:check && npm run demo > /dev/null && echo 'verify: all checks passed'",
     "example:durability": "node examples/07-durability.ts",
-    "test:concurrency": "node --test test/concurrency.test.ts test/adapter-conformance.test.ts test/reaper.test.ts"
+    "test:concurrency": "node --test test/concurrency.test.ts test/adapter-conformance.test.ts test/reaper.test.ts",
+    "vectors:generate": "node tools/generate-vectors.ts",
+    "vectors:check": "node tools/generate-vectors.ts --check",
+    "conformance": "npm run vectors:check && cd conformance/go && go run ."
   },
   "keywords": [
     "offers",

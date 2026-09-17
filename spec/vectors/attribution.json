@@ -1,0 +1,1034 @@
+{
+  "suite": "attribution",
+  "level": "L4",
+  "description": "Credit division. Basis points MUST sum to exactly 10000 and money MUST sum to exactly the attributed value, for every model at every journey length.",
+  "cases": [
+    {
+      "id": "first_touch:1",
+      "input": {
+        "model": "first_touch",
+        "touchpointCount": 1,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          10000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "first_touch:2",
+      "input": {
+        "model": "first_touch",
+        "touchpointCount": 2,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          10000,
+          0
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "first_touch:3",
+      "input": {
+        "model": "first_touch",
+        "touchpointCount": 3,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          10000,
+          0,
+          0
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "first_touch:5",
+      "input": {
+        "model": "first_touch",
+        "touchpointCount": 5,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          10000,
+          0,
+          0,
+          0,
+          0
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "first_touch:7",
+      "input": {
+        "model": "first_touch",
+        "touchpointCount": 7,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          10000,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "last_touch:1",
+      "input": {
+        "model": "last_touch",
+        "touchpointCount": 1,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          10000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "last_touch:2",
+      "input": {
+        "model": "last_touch",
+        "touchpointCount": 2,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          0,
+          10000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "last_touch:3",
+      "input": {
+        "model": "last_touch",
+        "touchpointCount": 3,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          0,
+          0,
+          10000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "last_touch:5",
+      "input": {
+        "model": "last_touch",
+        "touchpointCount": 5,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          0,
+          0,
+          0,
+          0,
+          10000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "last_touch:7",
+      "input": {
+        "model": "last_touch",
+        "touchpointCount": 7,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          10000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "0",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "linear:1",
+      "input": {
+        "model": "linear",
+        "touchpointCount": 1,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          10000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "linear:2",
+      "input": {
+        "model": "linear",
+        "touchpointCount": 2,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          5000,
+          5000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "5000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "5000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "linear:3",
+      "input": {
+        "model": "linear",
+        "touchpointCount": 3,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          3334,
+          3333,
+          3333
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "3334",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "3333",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "3333",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "linear:5",
+      "input": {
+        "model": "linear",
+        "touchpointCount": 5,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          2000,
+          2000,
+          2000,
+          2000,
+          2000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "2000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "2000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "2000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "2000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "2000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "linear:7",
+      "input": {
+        "model": "linear",
+        "touchpointCount": 7,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          1429,
+          1429,
+          1429,
+          1429,
+          1428,
+          1428,
+          1428
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "1429",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "1429",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "1429",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "1429",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "1428",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "1428",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "1428",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "position_based:1",
+      "input": {
+        "model": "position_based",
+        "touchpointCount": 1,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          10000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "position_based:2",
+      "input": {
+        "model": "position_based",
+        "touchpointCount": 2,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          5000,
+          5000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "5000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "5000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "position_based:3",
+      "input": {
+        "model": "position_based",
+        "touchpointCount": 3,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          4000,
+          2000,
+          4000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "4000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "2000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "4000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "position_based:5",
+      "input": {
+        "model": "position_based",
+        "touchpointCount": 5,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          4000,
+          667,
+          667,
+          666,
+          4000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "4000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "667",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "667",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "666",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "4000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "position_based:7",
+      "input": {
+        "model": "position_based",
+        "touchpointCount": 7,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          4000,
+          400,
+          400,
+          400,
+          400,
+          400,
+          4000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "4000",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "400",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "400",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "400",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "400",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "400",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "4000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "time_decay:1",
+      "input": {
+        "model": "time_decay",
+        "touchpointCount": 1,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          10000
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "10000",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "time_decay:2",
+      "input": {
+        "model": "time_decay",
+        "touchpointCount": 2,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          3333,
+          6667
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "3333",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "6667",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "time_decay:3",
+      "input": {
+        "model": "time_decay",
+        "touchpointCount": 3,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          1428,
+          2857,
+          5715
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "1428",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "2857",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "5715",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "time_decay:5",
+      "input": {
+        "model": "time_decay",
+        "touchpointCount": 5,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          322,
+          645,
+          1290,
+          2581,
+          5162
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "322",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "645",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "1290",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "2581",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "5162",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "time_decay:7",
+      "input": {
+        "model": "time_decay",
+        "touchpointCount": 7,
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        }
+      },
+      "expect": {
+        "basisPoints": [
+          78,
+          157,
+          315,
+          630,
+          1260,
+          2520,
+          5040
+        ],
+        "amounts": [
+          {
+            "unit": "USD",
+            "minor": "78",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "157",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "315",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "630",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "1260",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "2520",
+            "scale": 2
+          },
+          {
+            "unit": "USD",
+            "minor": "5040",
+            "scale": 2
+          }
+        ],
+        "basisPointsSum": 10000
+      }
+    },
+    {
+      "id": "empty-journey",
+      "input": {
+        "model": "linear",
+        "touchpointCount": 0
+      },
+      "expect": {
+        "basisPoints": [],
+        "amounts": [],
+        "basisPointsSum": 0
+      }
+    }
+  ]
+}

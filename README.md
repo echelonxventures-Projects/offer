@@ -13,6 +13,8 @@ CONTEXT → CONDITIONS → ELIGIBILITY → BENEFIT → EXECUTION → SETTLEMENT 
 - **Zero build step.** `node examples/01-coupon.ts` runs the real platform.
 - **Durable and atomic.** SQLite adapter on Node's built-in driver; limits and
   budgets are enforced inside the write, proven by concurrency tests.
+- **Language-agnostic contract.** 289 conformance vectors, with an independent
+  **Go** implementation that reproduces every one of them.
 - **Exact money.** Integer minor units and `bigint` throughout. No floats, ever.
 - **Explainable.** Every decision carries the full trace of why it went that way.
 - **Auditable.** Hash-chained records; tampering is detectable and located.
@@ -98,6 +100,23 @@ Each is a runnable file that prints what it did and why.
 | `06-stacking-conflict.ts` | Conflict groups, exclusivity, and objectives that disagree |
 | `07-durability.ts` | Restart with nothing lost; 20 concurrent claims, 1 admitted |
 
+## Two halves
+
+| | |
+| --- | --- |
+| [`spec/`](spec/README.md) | The **specification** — vectors, schemas, encoding, storage contract. No TypeScript. |
+| `src/` | The **reference implementation**, which happens to be TypeScript. |
+| [`conformance/go/`](conformance/go) | An **independent Go implementation**, proving the spec is re-implementable. |
+
+The split matters: an implementation has to be written in *some* language, so
+what is portable is the contract. `spec/vectors/` freezes behaviour as input and
+exact expected output, and the Go implementation reproduces all 289 cases with
+no shared code.
+
+```bash
+npm run conformance     # reference + Go, against the same vectors
+```
+
 ## Documentation
 
 Start at **[docs/README.md](docs/README.md)**.
@@ -118,6 +137,8 @@ The three documents worth reading before anything else:
 | `npm test` | Run the test suite |
 | `npm run demo` | Run all examples |
 | `npm run typecheck` | Strict TypeScript check (needs `npm install`) |
+| `npm run conformance` | Run the vectors against the reference and the Go implementation |
+| `npm run vectors:generate` | Regenerate the conformance vectors |
 | `npm run docs:registries` | Regenerate the registry reference from the code |
 | `npm run docs:check` | Fail if the generated reference is stale |
 | `npm run verify` | Typecheck, test, docs check, and examples together |
@@ -137,5 +158,6 @@ nothing scheduling the reservation reaper.
 | | |
 | --- | --- |
 | Tests | 253, across 2 storage adapters |
+| Conformance vectors | 289, across 2 language implementations |
 | Typecheck | strict, clean |
 | Runtime dependencies | 0 |

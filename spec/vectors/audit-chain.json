@@ -1,0 +1,37 @@
+{
+  "suite": "audit-chain",
+  "level": "L1",
+  "description": "Hash chaining. hash = sha256(previousHash + '|' + canonical(record-without-hash)). Genesis is 64 zeros. Identical drafts MUST chain to identical hashes in every language.",
+  "cases": [
+    {
+      "id": "three-record-chain",
+      "input": {
+        "genesis": "0000000000000000000000000000000000000000000000000000000000000000",
+        "drafts": [
+          "{\"tenant\":\"t\",\"reality\":\"production\",\"kind\":\"decision.made\",\"subject\":{\"kind\":\"decision\",\"id\":\"d1\"},\"actor\":\"tester\",\"at\":\"1000\",\"payload\":{\"n\":1}}",
+          "{\"tenant\":\"t\",\"reality\":\"production\",\"kind\":\"decision.made\",\"subject\":{\"kind\":\"decision\",\"id\":\"d2\"},\"actor\":\"tester\",\"at\":\"2000\",\"payload\":{\"n\":2}}",
+          "{\"tenant\":\"t\",\"reality\":\"production\",\"kind\":\"decision.made\",\"subject\":{\"kind\":\"decision\",\"id\":\"d3\"},\"actor\":\"tester\",\"at\":\"3000\",\"payload\":{\"n\":3}}"
+        ]
+      },
+      "expect": {
+        "sealed": [
+          {
+            "seq": 0,
+            "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "hash": "a0a1216a321c2937748e5d7a408f0ee53582c5b01829d58f4b34dcfe4b4144c6"
+          },
+          {
+            "seq": 1,
+            "previousHash": "a0a1216a321c2937748e5d7a408f0ee53582c5b01829d58f4b34dcfe4b4144c6",
+            "hash": "a4cb268907cd75f3a358ffcf6a5c39d1ee65086d05eaf618102b39ab44f2264f"
+          },
+          {
+            "seq": 2,
+            "previousHash": "a4cb268907cd75f3a358ffcf6a5c39d1ee65086d05eaf618102b39ab44f2264f",
+            "hash": "775ec6836cf7d5e3de5d0f10859bc53a85dfb2a3b28f2091453ae259901ba5c4"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "description": "The error vocabulary. Codes are stable; messages are not. Match on code.",
+  "shape": {
+    "code": "one of the codes below",
+    "message": "human-readable, safe to log, NOT a stable interface",
+    "details": "machine-readable specifics; the useful part",
+    "retryable": "boolean; true only when an identical retry could plausibly succeed"
+  },
+  "codes": [
+    { "code": "INVALID_REQUEST", "http": 400, "meaning": "The request is malformed.", "retryable": false },
+    { "code": "UNKNOWN_REGISTRY_ENTRY", "http": 400, "meaning": "A referenced registry entry does not exist. Details name the registry and what was available.", "retryable": false },
+    { "code": "NOT_FOUND", "http": 404, "meaning": "A referenced exchange, grant, execution or account does not exist.", "retryable": false },
+    { "code": "FORBIDDEN", "http": 403, "meaning": "The caller is not permitted to perform this capability.", "retryable": false },
+    { "code": "ILLEGAL_STATE", "http": 409, "meaning": "The object exists but its state forbids this action.", "retryable": false },
+    { "code": "NOT_ELIGIBLE", "http": 200, "meaning": "Conditions evaluated cleanly and the subject does not qualify. This is an answer, not a failure: return it with the decision attached.", "retryable": false },
+    { "code": "RULE_ERROR", "http": 500, "meaning": "A condition could not be evaluated. An authoring bug, not a client error: the offer silently delivers nothing until it is fixed. Alert on this.", "retryable": false },
+    { "code": "INSUFFICIENT_FUNDS", "http": 409, "meaning": "Funding cannot cover the benefit. Details carry the shortfall in minor units.", "retryable": false },
+    { "code": "UNIT_MISMATCH", "http": 400, "meaning": "Two units cannot be combined and no exchange rate exists.", "retryable": false },
+    { "code": "LIMIT_EXCEEDED", "http": 409, "meaning": "An issuance, redemption or budget limit is exhausted. Details name which.", "retryable": false },
+    { "code": "CONFLICT", "http": 409, "meaning": "Optimistic concurrency failure, OR a broken audit chain. These are very different: the first is retryable, the second is a security incident with details.seq naming where.", "retryable": true },
+    { "code": "GOVERNANCE_REJECTED", "http": 422, "meaning": "Policy or approval refused the action. Details carry the violations.", "retryable": false },
+    { "code": "RISK_BLOCKED", "http": 403, "meaning": "The risk engine blocked the interaction. Details carry the firing signals, so the block is appealable.", "retryable": false },
+    { "code": "NOT_IMPLEMENTED", "http": 501, "meaning": "The capability is registered but has no handler bound.", "retryable": false }
+  ],
+  "limitCodes": [
+    "limit.total_issuance",
+    "limit.total_redemptions",
+    "limit.per_subject",
+    "limit.per_subject_per_period",
+    "limit.total_budget"
+  ],
+  "limitCheckOrder": {
+    "normative": true,
+    "order": ["limit.total_redemptions", "limit.per_subject", "limit.per_subject_per_period", "limit.total_budget"],
+    "reason": "The reported breach must be the first in this order, so a customer is given the same reason whichever implementation answers."
+  }
+}

@@ -56,6 +56,21 @@ Organised so you can start anywhere, but if you are new, read in this order:
 | [11 Discovery](03-engines/11-discovery.md) | Listing and ranking what is available |
 | [12 Attribution](03-engines/12-attribution.md) | Journeys, models, exact credit division |
 
+## The specification (language-neutral)
+
+Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
+
+| Document | Contents |
+| --- | --- |
+| [Specification overview](../spec/README.md) | What is normative, and the conformance levels |
+| [Conformance](../spec/conformance.md) | How to run the vectors and declare a level |
+| [Encoding](../spec/encoding.md) | Canonical hashing form and the wire codec |
+| [Rule language](../spec/rule-language.md) | The condition AST, normative parts only |
+| [Storage contract](../spec/storage-contract.md) | L5 obligations, in any database |
+| [`spec/vectors/`](../spec/vectors) | 289 frozen behaviour cases |
+| [`spec/schema/`](../spec/schema) | JSON Schema for the data model |
+| [`conformance/go/`](../conformance/go) | Independent Go implementation, L1–L4 |
+
 ## 04 — Registries
 
 | Document | Contents |
@@ -87,6 +102,7 @@ Organised so you can start anywhere, but if you are new, read in this order:
 | [0010](06-adr/0010-no-implicit-unit-conversion.md) | No implicit unit conversion |
 | [0011](06-adr/0011-no-read-check-write-in-the-port.md) | No read-check-write in the storage port |
 | [0012](06-adr/0012-sqlite-as-the-reference-durable-adapter.md) | SQLite as the reference durable adapter |
+| [0013](06-adr/0013-conformance-vectors-as-the-portability-contract.md) | Conformance vectors as the portability contract |
 
 ## 07 — Operations
 

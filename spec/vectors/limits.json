@@ -1,0 +1,405 @@
+{
+  "suite": "limits",
+  "level": "L3",
+  "description": "Limit semantics. Check order is normative - the reported breach MUST be the first one in this order: totalRedemptions, perSubject, perSubjectPerPeriod, totalBudget. Advisory mode exists because eligibility runs before benefits are resolved.",
+  "cases": [
+    {
+      "id": "no-limits",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 0,
+          "subjectRedemptions": 0,
+          "subjectRecent": [],
+          "grantedByUnit": {}
+        },
+        "limits": {},
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": null
+      }
+    },
+    {
+      "id": "total-redemptions-room",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 2,
+          "subjectRedemptions": 0,
+          "subjectRecent": [],
+          "grantedByUnit": {}
+        },
+        "limits": {
+          "totalRedemptions": 3
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": null
+      }
+    },
+    {
+      "id": "total-redemptions-full",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 3,
+          "subjectRedemptions": 0,
+          "subjectRecent": [],
+          "grantedByUnit": {}
+        },
+        "limits": {
+          "totalRedemptions": 3
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": {
+          "limit": "limit.total_redemptions",
+          "detail": "3/3"
+        }
+      }
+    },
+    {
+      "id": "per-subject-room",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 0,
+          "subjectRedemptions": 0,
+          "subjectRecent": [],
+          "grantedByUnit": {}
+        },
+        "limits": {
+          "perSubject": 1
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": null
+      }
+    },
+    {
+      "id": "per-subject-full",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 0,
+          "subjectRedemptions": 1,
+          "subjectRecent": [],
+          "grantedByUnit": {}
+        },
+        "limits": {
+          "perSubject": 1
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": {
+          "limit": "limit.per_subject",
+          "detail": "1/1"
+        }
+      }
+    },
+    {
+      "id": "per-subject-anonymous",
+      "note": "an anonymous subject cannot satisfy a per-subject limit",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 0,
+          "subjectRedemptions": 0,
+          "subjectRecent": [],
+          "grantedByUnit": {}
+        },
+        "limits": {
+          "perSubject": 1
+        },
+        "subjectId": null,
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": {
+          "limit": "limit.per_subject",
+          "detail": "anonymous subject cannot be limited per subject"
+        }
+      }
+    },
+    {
+      "id": "per-period-room",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 0,
+          "subjectRedemptions": 0,
+          "subjectRecent": [
+            900
+          ],
+          "grantedByUnit": {}
+        },
+        "limits": {
+          "perSubjectPerPeriod": {
+            "max": 2,
+            "windowSeconds": 200
+          }
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": null
+      }
+    },
+    {
+      "id": "per-period-full",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 0,
+          "subjectRedemptions": 0,
+          "subjectRecent": [
+            900,
+            950
+          ],
+          "grantedByUnit": {}
+        },
+        "limits": {
+          "perSubjectPerPeriod": {
+            "max": 2,
+            "windowSeconds": 200
+          }
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": {
+          "limit": "limit.per_subject_per_period",
+          "detail": "2/2 in the last 200s"
+        }
+      }
+    },
+    {
+      "id": "per-period-expired",
+      "note": "timestamps outside the window do not count",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 0,
+          "subjectRedemptions": 0,
+          "subjectRecent": [
+            100,
+            200
+          ],
+          "grantedByUnit": {}
+        },
+        "limits": {
+          "perSubjectPerPeriod": {
+            "max": 2,
+            "windowSeconds": 200
+          }
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": null
+      }
+    },
+    {
+      "id": "budget-fits",
+      "note": "exactly exhausting the budget is allowed",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 0,
+          "subjectRedemptions": 0,
+          "subjectRecent": [],
+          "grantedByUnit": {
+            "USD": {
+              "unit": "USD",
+              "minor": "1000",
+              "scale": 2
+            }
+          }
+        },
+        "limits": {
+          "totalBudget": {
+            "unit": "USD",
+            "decimal": "20.00"
+          }
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [
+          {
+            "unit": "USD",
+            "minor": "1000",
+            "scale": 2
+          }
+        ],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": null
+      }
+    },
+    {
+      "id": "budget-exceeds",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 0,
+          "subjectRedemptions": 0,
+          "subjectRecent": [],
+          "grantedByUnit": {
+            "USD": {
+              "unit": "USD",
+              "minor": "1000",
+              "scale": 2
+            }
+          }
+        },
+        "limits": {
+          "totalBudget": {
+            "unit": "USD",
+            "decimal": "15.00"
+          }
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [
+          {
+            "unit": "USD",
+            "minor": "1000",
+            "scale": 2
+          }
+        ],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": {
+          "limit": "limit.total_budget",
+          "detail": "2000/1500 minor units of USD"
+        }
+      }
+    },
+    {
+      "id": "budget-advisory-has-room",
+      "note": "advisory mode asks only whether any headroom remains",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 0,
+          "subjectRedemptions": 0,
+          "subjectRecent": [],
+          "grantedByUnit": {
+            "USD": {
+              "unit": "USD",
+              "minor": "1000",
+              "scale": 2
+            }
+          }
+        },
+        "limits": {
+          "totalBudget": {
+            "unit": "USD",
+            "decimal": "15.00"
+          }
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "advisory"
+      },
+      "expect": {
+        "breach": null
+      }
+    },
+    {
+      "id": "budget-advisory-exhausted",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 0,
+          "subjectRedemptions": 0,
+          "subjectRecent": [],
+          "grantedByUnit": {
+            "USD": {
+              "unit": "USD",
+              "minor": "2000",
+              "scale": 2
+            }
+          }
+        },
+        "limits": {
+          "totalBudget": {
+            "unit": "USD",
+            "decimal": "20.00"
+          }
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "advisory"
+      },
+      "expect": {
+        "breach": {
+          "limit": "limit.total_budget",
+          "detail": "2000/2000 minor units of USD"
+        }
+      }
+    },
+    {
+      "id": "ordering",
+      "note": "totalRedemptions is checked before perSubject; the first breach wins",
+      "input": {
+        "snapshot": {
+          "issued": 0,
+          "redemptions": 5,
+          "subjectRedemptions": 5,
+          "subjectRecent": [],
+          "grantedByUnit": {}
+        },
+        "limits": {
+          "totalRedemptions": 5,
+          "perSubject": 5
+        },
+        "subjectId": "s1",
+        "atSeconds": 1000,
+        "granted": [],
+        "mode": "authoritative"
+      },
+      "expect": {
+        "breach": {
+          "limit": "limit.total_redemptions",
+          "detail": "5/5"
+        }
+      }
+    }
+  ]
+}

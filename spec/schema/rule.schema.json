@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://goip.spec/schema/rule.schema.json",
+  "title": "RuleNode",
+  "description": "A condition. Data, not code: storable, versionable, diffable, approvable, replayable, and showable to a regulator. Evaluation is total by construction - bounded depth (32), bounded node budget (5000), no I/O, and NO REGULAR EXPRESSIONS.",
+  "type": "object",
+  "required": ["op"],
+  "properties": {
+    "op": {
+      "type": "string",
+      "description": "Registry key selecting an operator. The remaining properties are that operator's own arguments."
+    }
+  },
+  "$defs": {
+    "term": {
+      "description": "A value inside a rule. Bare JSON in an argument position is treated as a literal.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["path"],
+          "additionalProperties": false,
+          "properties": {
+            "path": { "type": "string", "description": "Dotted path into the resolved context, e.g. 'cart.subtotal'. A missing path resolves to undefined and never throws." },
+            "default": {}
+          }
+        },
+        { "type": "object", "required": ["literal"], "additionalProperties": false, "properties": { "literal": {} } },
+        {
+          "type": "object",
+          "required": ["amount"],
+          "additionalProperties": false,
+          "properties": {
+            "amount": {
+              "type": "object",
+              "required": ["unit", "decimal"],
+              "additionalProperties": false,
+              "properties": { "unit": { "type": "string" }, "decimal": { "type": "string" } }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["fn"],
+          "additionalProperties": false,
+          "properties": {
+            "fn": { "type": "string" },
+            "args": { "type": "array", "items": { "$ref": "#/$defs/term" } }
+          }
+        }
+      ]
+    }
+  },
+  "x-operators": {
+    "logic": {
+      "always": [],
+      "never": [],
+      "all": ["of"],
+      "any": ["of"],
+      "none": ["of"],
+      "not": ["of"]
+    },
+    "comparison": {
+      "eq": ["left", "right"],
+      "ne": ["left", "right"],
+      "gt": ["left", "right"],
+      "gte": ["left", "right"],
+      "lt": ["left", "right"],
+      "lte": ["left", "right"],
+      "between": ["value", "low", "high"]
+    },
+    "membership": {
+      "exists": ["value"],
+      "in": ["value", "options"],
+      "notIn": ["value", "options"],
+      "includesAny": ["collection", "values"],
+      "includesAll": ["collection", "values"],
+      "sizeOf": ["collection", "gte", "lte"],
+      "glob": ["value", "pattern"]
+    },
+    "domain": {
+      "spatial.within": ["nodes", "exclude"],
+      "spatial.jurisdiction": ["in"],
+      "temporal.within": ["window"],
+      "temporal.field": ["field", "in", "min", "max"],
+      "subject.hasSegment": ["segments", "mode"],
+      "subject.hasMembership": ["memberships"]
+    }
+  },
+  "x-functions": {
+    "list": -1,
+    "cart.quantityIn": 1,
+    "cart.subtotalOf": 1,
+    "cart.hasSku": 1,
+    "cart.merchants": 0,
+    "subject.counter": 1,
+    "facet": 2
+  },
+  "x-normative": [
+    "Short-circuiting is observable: 'all' and 'any' MUST NOT evaluate children after the one that decides, and the trace MUST reflect that.",
+    "Incomparable operands (a string against money) are an error, NEVER a silent false. Returning false would hide an authoring mistake until it cost money.",
+    "A calendar field the context calendar does not publish evaluates to false, not an error, so a rule written for one calendar simply never fires on another.",
+    "There is no regex operator. String matching is a non-backtracking glob with * and ?. A tenant-authored pattern evaluated on the request path is a denial-of-service vector."
+  ]
+}

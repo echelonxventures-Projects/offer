@@ -1,0 +1,1182 @@
+{
+  "suite": "benefits",
+  "level": "L3",
+  "description": "Benefit computation. Line allocations MUST sum exactly to the computed value, spread proportionally to line totals using the same remainder rule as `allocate`.",
+  "cases": [
+    {
+      "id": "percentage-10",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "percentage",
+          "params": {
+            "rate": "10"
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "1000",
+          "scale": 2
+        },
+        "allocations": [
+          {
+            "lineId": "l1",
+            "amount": {
+              "unit": "USD",
+              "minor": "600",
+              "scale": 2
+            }
+          },
+          {
+            "lineId": "l2",
+            "amount": {
+              "unit": "USD",
+              "minor": "400",
+              "scale": 2
+            }
+          }
+        ],
+        "detail": "10% of 100.00 USD"
+      }
+    },
+    {
+      "id": "percentage-12.5-odd",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "percentage",
+          "params": {
+            "rate": "12.5"
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "1234",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "154",
+          "scale": 2
+        },
+        "allocations": [
+          {
+            "lineId": "l1",
+            "amount": {
+              "unit": "USD",
+              "minor": "93",
+              "scale": 2
+            }
+          },
+          {
+            "lineId": "l2",
+            "amount": {
+              "unit": "USD",
+              "minor": "61",
+              "scale": 2
+            }
+          }
+        ],
+        "detail": "12.5% of 12.34 USD"
+      }
+    },
+    {
+      "id": "percentage-rounding",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "percentage",
+          "params": {
+            "rate": "33.333"
+          },
+          "effect": "price_reduction",
+          "rounding": "half_up"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "3333",
+          "scale": 2
+        },
+        "allocations": [
+          {
+            "lineId": "l1",
+            "amount": {
+              "unit": "USD",
+              "minor": "2000",
+              "scale": 2
+            }
+          },
+          {
+            "lineId": "l2",
+            "amount": {
+              "unit": "USD",
+              "minor": "1333",
+              "scale": 2
+            }
+          }
+        ],
+        "detail": "33.333% of 100.00 USD"
+      }
+    },
+    {
+      "id": "flat-under-base",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "flat",
+          "params": {
+            "amount": "25.00"
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "2500",
+          "scale": 2
+        },
+        "allocations": [
+          {
+            "lineId": "l1",
+            "amount": {
+              "unit": "USD",
+              "minor": "1500",
+              "scale": 2
+            }
+          },
+          {
+            "lineId": "l2",
+            "amount": {
+              "unit": "USD",
+              "minor": "1000",
+              "scale": 2
+            }
+          }
+        ],
+        "detail": "flat 25.00 USD"
+      }
+    },
+    {
+      "id": "flat-over-base",
+      "note": "a flat discount is clipped to the base it applies to",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "flat",
+          "params": {
+            "amount": "500.00"
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "allocations": [
+          {
+            "lineId": "l1",
+            "amount": {
+              "unit": "USD",
+              "minor": "6000",
+              "scale": 2
+            }
+          },
+          {
+            "lineId": "l2",
+            "amount": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            }
+          }
+        ],
+        "detail": "flat 100.00 USD (limited to base)"
+      }
+    },
+    {
+      "id": "tiered-middle",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "tiered",
+          "params": {
+            "tiers": [
+              {
+                "min": "50.00",
+                "rate": "5"
+              },
+              {
+                "min": "100.00",
+                "rate": "15"
+              },
+              {
+                "min": "500.00",
+                "rate": "25"
+              }
+            ]
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "1500",
+          "scale": 2
+        },
+        "allocations": [
+          {
+            "lineId": "l1",
+            "amount": {
+              "unit": "USD",
+              "minor": "900",
+              "scale": 2
+            }
+          },
+          {
+            "lineId": "l2",
+            "amount": {
+              "unit": "USD",
+              "minor": "600",
+              "scale": 2
+            }
+          }
+        ],
+        "detail": "tier min 100.00 at 15%"
+      }
+    },
+    {
+      "id": "tiered-none-met",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "tiered",
+          "params": {
+            "tiers": [
+              {
+                "min": "500.00",
+                "rate": "25"
+              }
+            ]
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "0",
+          "scale": 2
+        },
+        "allocations": [],
+        "detail": "no tier threshold met"
+      }
+    },
+    {
+      "id": "tiered-flat-amount",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "tiered",
+          "params": {
+            "tiers": [
+              {
+                "min": "50.00",
+                "amount": "7.50"
+              }
+            ]
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "750",
+          "scale": 2
+        },
+        "allocations": [
+          {
+            "lineId": "l1",
+            "amount": {
+              "unit": "USD",
+              "minor": "450",
+              "scale": 2
+            }
+          },
+          {
+            "lineId": "l2",
+            "amount": {
+              "unit": "USD",
+              "minor": "300",
+              "scale": 2
+            }
+          }
+        ],
+        "detail": "tier min 50.00 flat 7.50"
+      }
+    },
+    {
+      "id": "volume-met",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "volume",
+          "params": {
+            "tiers": [
+              {
+                "minQuantity": 2,
+                "rate": "10"
+              },
+              {
+                "minQuantity": 10,
+                "rate": "30"
+              }
+            ]
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "1000",
+          "scale": 2
+        },
+        "allocations": [
+          {
+            "lineId": "l1",
+            "amount": {
+              "unit": "USD",
+              "minor": "600",
+              "scale": 2
+            }
+          },
+          {
+            "lineId": "l2",
+            "amount": {
+              "unit": "USD",
+              "minor": "400",
+              "scale": 2
+            }
+          }
+        ],
+        "detail": "3 items >= 2 at 10%"
+      }
+    },
+    {
+      "id": "volume-none-met",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "volume",
+          "params": {
+            "tiers": [
+              {
+                "minQuantity": 99,
+                "rate": "30"
+              }
+            ]
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "0",
+          "scale": 2
+        },
+        "allocations": [],
+        "detail": "quantity 3 met no tier"
+      }
+    },
+    {
+      "id": "fixed-price",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "fixed_price",
+          "params": {
+            "price": "25.00"
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "2500",
+          "scale": 2
+        },
+        "allocations": [
+          {
+            "lineId": "l1",
+            "amount": {
+              "unit": "USD",
+              "minor": "1000",
+              "scale": 2
+            }
+          },
+          {
+            "lineId": "l2",
+            "amount": {
+              "unit": "USD",
+              "minor": "1500",
+              "scale": 2
+            }
+          }
+        ],
+        "detail": "each unit priced at 25.00"
+      }
+    },
+    {
+      "id": "fixed-price-above",
+      "note": "never a negative benefit",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "fixed_price",
+          "params": {
+            "price": "999.00"
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "0",
+          "scale": 2
+        },
+        "allocations": [
+          {
+            "lineId": "l1",
+            "amount": {
+              "unit": "USD",
+              "minor": "0",
+              "scale": 2
+            }
+          },
+          {
+            "lineId": "l2",
+            "amount": {
+              "unit": "USD",
+              "minor": "0",
+              "scale": 2
+            }
+          }
+        ],
+        "detail": "each unit priced at 999.00"
+      }
+    },
+    {
+      "id": "free-quantity",
+      "note": "the cheapest units are the free ones",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "free_quantity",
+          "params": {
+            "buy": 2,
+            "free": 1
+          },
+          "effect": "price_reduction"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "3000",
+          "scale": 2
+        },
+        "allocations": [
+          {
+            "lineId": "l1",
+            "amount": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            }
+          }
+        ],
+        "detail": "1 unit(s) free under buy 2 get 1"
+      }
+    },
+    {
+      "id": "item-grant",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "item_grant",
+          "params": {
+            "sku": "FREE-MUG",
+            "quantity": 2,
+            "value": "4.50"
+          },
+          "effect": "item_grant"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "USD",
+        "scale": 2
+      },
+      "expect": {
+        "value": {
+          "unit": "USD",
+          "minor": "900",
+          "scale": 2
+        },
+        "allocations": [],
+        "detail": "grant 2 x FREE-MUG",
+        "grant": {
+          "sku": "FREE-MUG",
+          "quantity": 2
+        }
+      }
+    },
+    {
+      "id": "points-accrual",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "points_accrual",
+          "params": {
+            "points": 2,
+            "per": 1
+          },
+          "effect": "points_grant",
+          "unit": "POINTS"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "POINTS",
+        "scale": 0
+      },
+      "expect": {
+        "value": {
+          "unit": "POINTS",
+          "minor": "200",
+          "scale": 0
+        },
+        "allocations": [],
+        "detail": "2 per 1 of 100.00 USD"
+      }
+    },
+    {
+      "id": "points-accrual-per-5",
+      "input": {
+        "spec": {
+          "id": "b",
+          "type": "points_accrual",
+          "params": {
+            "points": 1,
+            "per": 5
+          },
+          "effect": "points_grant",
+          "unit": "POINTS"
+        },
+        "base": {
+          "unit": "USD",
+          "minor": "10000",
+          "scale": 2
+        },
+        "lines": [
+          {
+            "id": "l1",
+            "sku": "TEA-500",
+            "quantity": 2,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "3000",
+              "scale": 2
+            },
+            "categories": [
+              "grocery"
+            ],
+            "merchant": "m1"
+          },
+          {
+            "id": "l2",
+            "sku": "MUG-CERAMIC",
+            "quantity": 1,
+            "unitPrice": {
+              "unit": "USD",
+              "minor": "4000",
+              "scale": 2
+            },
+            "categories": [
+              "homeware"
+            ],
+            "merchant": "m2"
+          }
+        ],
+        "unit": "POINTS",
+        "scale": 0
+      },
+      "expect": {
+        "value": {
+          "unit": "POINTS",
+          "minor": "20",
+          "scale": 0
+        },
+        "allocations": [],
+        "detail": "1 per 5 of 100.00 USD"
+      }
+    }
+  ]
+}

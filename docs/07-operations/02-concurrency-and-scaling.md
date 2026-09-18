@@ -58,6 +58,36 @@ The chain is serial within a tenant: each record needs the previous hash.
 
 Do not make the chain global. It would be a platform-wide serialisation point.
 
+## Ledger growth
+
+The ledger is append-only and grows faster than anything else in the system.
+Anything that folds it from genesis gets slower every day and never faster.
+
+Three callers needed netted balances — `settle`, `pay` and the `ledger` health
+check — and all three did exactly that. Health runs every minute, so the check
+designed to catch problems was on its way to becoming one.
+
+Reconciliation now folds forward from a snapshot in bounded batches, the same
+shape as audit checkpointing one layer up:
+
+| Read | Cost |
+| --- | --- |
+| `reconciliation.positions` | Entries since the last snapshot, in pages of 5000 |
+| `settle` | The same fold; reports `throughSeq` and `foldedEntries` |
+| `health.check` (ledger) | The same fold — bounded, not proportional to history |
+
+Watch `foldedEntries`. If it climbs, snapshot more often; that is
+`intervalSeconds` on the `ledger.snapshot` job, not a code change.
+
+Snapshots are derived and never authoritative — delete them all and the answer
+is identical. What they must never do is record an imbalance, because a snapshot
+is a claim that the balances up to that point are trusted, and later folds start
+after it. `snapshot()` therefore verifies first and refuses. See
+[reconciliation and replay](10-reconciliation-and-replay.md).
+
+Partitioning the ledger itself is still not built. Snapshots change the cost of
+*reading* it, not of storing it.
+
 ## Registry distribution
 
 Registries are immutable configuration and should be:

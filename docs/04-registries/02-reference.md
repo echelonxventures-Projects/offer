@@ -4,7 +4,7 @@
 > Do not edit by hand. Run `npm run docs:check` to verify it is current.
 
 A default deployment ships **28 registries** holding
-**210 entries**. Every one of them is an extension point:
+**211 entries**. Every one of them is an extension point:
 registering an entry adds behaviour without changing any engine.
 
 ## Summary
@@ -28,7 +28,7 @@ registering an entry adds behaviour without changing any engine.
 | `exchange-rate` | 0 | Conversions between units |
 | `funding-model` | 3 | How cost divides across funders |
 | `lifecycle-transition` | 17 | Legal state moves and their approval gates |
-| `maintenance-job` | 5 |  |
+| `maintenance-job` | 6 |  |
 | `party-kind` | 11 | Kinds of party that hold budgets |
 | `policy` | 9 | Governance checks before publication |
 | `posting-rule` | 4 |  |
@@ -276,6 +276,7 @@ Legal state moves and their approval gates.
 | `audit.checkpoint` | Checkpoint the audit chain | Verify forward from the last checkpoint so verification does not become O(all of history). |
 | `audit.reconcile` | Compare the chain against the anchor | The check that actually detects a wholesale rewrite. |
 | `health.check` | Integrity health check | Ledger balance, audit verification, funding headroom, stale reservations. |
+| `ledger.snapshot` | Snapshot ledger balances | Records a trusted starting point so reconciliation folds only new entries. Without it, answering 'what is each account worth' rescans the fastest-growing table in the system, forever - and the health check does that every minute. |
 | `reservations.sweep` | Release stale reservations | Without this, an abandoned checkout holds budget forever and a campaign with money left starts refusing customers. The most important job here. |
 
 ### `party-kind`

@@ -23,6 +23,7 @@ import type { Telemetry } from "../observability/telemetry.ts";
 import type { HealthEngine, HealthReport } from "../observability/health.ts";
 import type { AlertEngine, AlertFiring, MetricReader } from "../observability/alerts.ts";
 import type { AuditService } from "../audit/audit-service.ts";
+import type { ReconciliationService } from "../ledger/reconciliation.ts";
 import type { ReservationReaper } from "../engines/reaper.ts";
 
 export interface MaintenanceConfigView {
@@ -36,6 +37,7 @@ export interface MaintenanceContext {
   readonly config: MaintenanceConfigView;
   readonly reaper: ReservationReaper;
   readonly audit: AuditService;
+  readonly reconciliation: ReconciliationService;
   readonly health: HealthEngine;
   readonly telemetry: Telemetry;
 }
@@ -164,6 +166,30 @@ export const DEFAULT_MAINTENANCE_JOBS: MaintenanceJob[] = [
       const reconciled = await audit.reconcileWithAnchor(tenant);
       if (!reconciled.ok) return reconciled;
       return ok({ summary: reconciled.value.detail, data: { status: reconciled.value.status } });
+    },
+  },
+  {
+    key: "ledger.snapshot",
+    order: 50,
+    label: "Snapshot ledger balances",
+    description:
+      "Records a trusted starting point so reconciliation folds only new entries. Without it, answering " +
+      "'what is each account worth' rescans the fastest-growing table in the system, forever - and the " +
+      "health check does that every minute.",
+    intervalSeconds: 3600,
+    async run({ tenant, now, reconciliation }) {
+      const snapshot = await reconciliation.snapshot(tenant, now);
+      if (!snapshot.ok) {
+        // An empty ledger is not a failure; there is simply nothing to trust yet.
+        if (snapshot.error.code === "NOT_FOUND") return ok({ summary: "no ledger entries to snapshot" });
+        // An unbalanced one IS a failure, and a loud one: snapshotting a hole
+        // would make it permanent.
+        return snapshot;
+      }
+      return ok({
+        summary: `snapshotted ${snapshot.value.positions.length} account position(s) through entry ${snapshot.value.throughSeq}`,
+        data: { throughSeq: snapshot.value.throughSeq, positions: snapshot.value.positions.length },
+      });
     },
   },
   {

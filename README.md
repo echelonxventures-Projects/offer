@@ -34,7 +34,7 @@ CONTEXT → CONDITIONS → ELIGIBILITY → BENEFIT → EXECUTION → SETTLEMENT 
 
 ```bash
 node --version          # needs >= 22.6 (tested on 26)
-npm test                # 200 tests, no install required
+npm test                # 419 tests, no install required
 npm run demo            # all six worked examples
 npm run example:coupon  # one of them
 ```
@@ -115,6 +115,7 @@ Each is a runnable file that prints what it did and why.
 | `08-operations.ts` | A day's traffic, then the maintenance pass that catches what broke |
 | `09-api.ts` | A real HTTP server, and the four things it refuses |
 | `10-authoring.ts` | Catching a broken offer before it silently delivers nothing |
+| `11-scale.ts` | Reconciling 100 entries without reading them, and replaying a dispute |
 
 ## Two halves
 
@@ -162,9 +163,11 @@ The three documents worth reading before anything else:
 
 ## Status
 
-A complete, working reference implementation. **Phase 1 (durability) is done:**
-storage is durable and atomic, with two adapters held to a shared conformance
-suite and concurrency tests that include a negative control.
+A complete, working reference implementation. **Phases 1–5 are done:** storage
+is durable and atomic with two adapters held to a shared conformance suite;
+callers authenticate and cannot name themselves as somebody else; an offer with
+an unevaluable condition cannot be published; and reconciliation folds forward
+from a snapshot rather than rescanning a table that only grows.
 
 It has never carried production traffic. What is still missing is written down
 rather than glossed over in
@@ -174,8 +177,8 @@ nothing triggering the maintenance runner.
 
 | | |
 | --- | --- |
-| Tests | 382, across 2 storage adapters |
-| Conformance vectors | 295, across 2 language implementations |
-| Registries | 28, holding 210 entries |
+| Tests | 419, across 2 storage adapters |
+| Conformance vectors | 295 assertions + 2 fixtures, across 2 language implementations |
+| Registries | 28, holding 211 entries |
 | Typecheck | strict, clean |
 | Runtime dependencies | 0 |

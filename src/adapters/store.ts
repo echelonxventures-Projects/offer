@@ -23,6 +23,7 @@ import type { LimitSpec } from "../model/limits.ts";
 import type { FundingSource } from "../model/funding.ts";
 import type { Amount } from "../universal/economic/amount.ts";
 import type { LedgerEntry } from "../ledger/ledger.ts";
+import type { AccountPosition } from "../ledger/positions.ts";
 import type { AuditDraft, AuditRecord } from "../audit/audit-log.ts";
 import type { Execution, ExecutionState } from "../model/execution.ts";
 import type { Touchpoint } from "../attribution/touchpoint.ts";
@@ -173,11 +174,49 @@ export interface ExecutionStore {
   ): Promise<Result<Execution[]>>;
 }
 
+/**
+ * Account balances as of a point in the ledger.
+ *
+ * The ledger is the fastest-growing table and it is append-only, so folding it
+ * from the beginning to answer "what is each account worth" gets slower every
+ * day and never gets faster. A snapshot is the same idea as an audit
+ * checkpoint: a trusted starting point so reconciliation folds only what is new.
+ */
+export interface LedgerSnapshot {
+  readonly tenant: string;
+  /** Balances include every entry up to and including this sequence number. */
+  readonly throughSeq: number;
+  readonly positions: readonly AccountPosition[];
+  /** Instant tick, as a string. */
+  readonly at: string;
+}
+
 export interface LedgerStore {
   append(entries: readonly LedgerEntry[]): Promise<Result<readonly LedgerEntry[]>>;
   entriesFor(tenant: string, accountId: string): Promise<Result<LedgerEntry[]>>;
   byReference(tenant: string, referenceId: string): Promise<Result<LedgerEntry[]>>;
+  /**
+   * Every entry, oldest first.
+   *
+   * Unbounded by construction. Use `entriesSince` on any path that runs more
+   * than once; this exists for one-off exports and for small tenants.
+   */
   all(tenant: string): Promise<Result<LedgerEntry[]>>;
+
+  /** Highest assigned sequence number, or -1 when the ledger is empty. */
+  headSeq(tenant: string): Promise<Result<number>>;
+  /**
+   * Entries after a sequence number, oldest first, at most `limit`.
+   * `lastSeq` is where the caller should resume.
+   */
+  entriesSince(
+    tenant: string,
+    afterSeq: number,
+    limit: number,
+  ): Promise<Result<{ entries: LedgerEntry[]; lastSeq: number }>>;
+
+  saveSnapshot(snapshot: LedgerSnapshot): Promise<Result<LedgerSnapshot>>;
+  latestSnapshot(tenant: string): Promise<Result<LedgerSnapshot | undefined>>;
 }
 
 /**

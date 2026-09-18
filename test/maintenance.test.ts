@@ -268,7 +268,7 @@ describe("maintenance runner", () => {
     assert.equal(report.ran, platform.maintenance.jobs.size);
     assert.deepEqual(
       report.jobs.map((j) => j.job).sort(),
-      ["audit.anchor", "audit.checkpoint", "audit.reconcile", "health.check", "reservations.sweep"],
+      ["audit.anchor", "audit.checkpoint", "audit.reconcile", "health.check", "ledger.snapshot", "reservations.sweep"],
     );
     await store.close?.();
   });

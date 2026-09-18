@@ -41,6 +41,14 @@ export class Registry<T extends RegistryEntry> {
   readonly #entries = new Map<string, T>();
   readonly #strict: boolean;
   #sealed = false;
+  /**
+   * Bumped on every mutation.
+   *
+   * Lets a cached derivation of the registry state - the bundle version a
+   * decision records - detect that it is stale without rehashing every entry on
+   * every request.
+   */
+  #revision = 0;
 
   constructor(name: string, options: RegistryOptions = {}) {
     this.name = name;
@@ -55,6 +63,7 @@ export class Registry<T extends RegistryEntry> {
       throw new Error(`registry '${this.name}' already has key '${entry.key}'`);
     }
     this.#entries.set(entry.key, entry);
+    this.#revision += 1;
     return this;
   }
 
@@ -68,7 +77,13 @@ export class Registry<T extends RegistryEntry> {
   override(entry: T): this {
     invariant(!this.#sealed, `registry '${this.name}' is sealed`);
     this.#entries.set(entry.key, entry);
+    this.#revision += 1;
     return this;
+  }
+
+  /** Monotonic mutation counter. Never decreases, never reused. */
+  get revision(): number {
+    return this.#revision;
   }
 
   get(key: string): T | undefined {

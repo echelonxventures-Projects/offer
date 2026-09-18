@@ -227,18 +227,48 @@ Two changes this phase forced, both improvements beyond authoring:
 
 Both are in [ADR 0017](../06-adr/0017-preview-as-a-publish-gate.md).
 
-## Phase 5 — Make it scale
+## Phase 5 — Make it scale ✅ **COMPLETE** (the parts that were defects)
 
 **Goal: survive volume.**
 
-| Work | Why |
+| Work | Status |
 | --- | --- |
-| Registry bundle versioning | Pin decisions to a rules version; makes replay exact |
-| Edge decisioning | `apply` at the edge, `reserve` central |
-| Sharded counters | For very large limits |
-| Read replicas | The decision path is read-heavy |
-| Ledger partitioning | It grows without bound |
-| Multi-region | With the sub-budget trade-off made explicitly |
+| **Bounded reconciliation** | ✅ Snapshot-backed; `settle`, `pay` and health no longer rescan the ledger |
+| **Registry bundle versioning** | ✅ Decisions record the bundle that produced them |
+| **Decision replay** | ✅ `replayDecision` — four conclusions, not a boolean |
+| Bundle comparison | ✅ `compareBundles` names which registries moved |
+| Edge decisioning | ❌ Not built |
+| Sharded counters | ❌ Not built |
+| Read replicas | ❌ Not built — an adapter concern, not a platform one |
+| Ledger partitioning | ❌ Not built |
+| Multi-region | ❌ Not built |
+
+**Exit criterion: met for the defects, not for the capacity work.** The audit
+that opened this phase found that the two highest-risk items were not really
+about volume.
+
+- **Three unbounded scans.** `settle()`, `pay()` and the `ledger` health check
+  each folded the entire ledger from genesis. The ledger is append-only and the
+  fastest-growing table in the system, so this got slower every day and never
+  faster — and health runs every minute, so the check designed to catch problems
+  was becoming one. Fixed with `LedgerSnapshot` and a bounded fold, mirroring the
+  audit-checkpoint pattern that already existed one layer over.
+- **Decisions did not record their rules.** A decision is a pure function of its
+  context *and* the loaded registries. Only the context was recorded, so a replay
+  could legitimately differ with nothing saying why — the exact moment an
+  investigation draws a wrong conclusion from a true observation.
+
+One bug this phase produced is worth keeping: `bundle` was first part of the
+hashed decision body, which made every decision fail to reproduce whenever *any*
+registry changed. That collapsed two different questions into one. It is now
+recorded but not hashed — provenance, not content.
+
+The remaining rows are genuine capacity work and none of them is a design flaw.
+Read replicas and partitioning are adapter concerns the ports already allow;
+sharded counters and edge decisioning are new features. They are listed as not
+done rather than claimed. See
+[ADR 0018](../06-adr/0018-snapshots-and-bundle-versions.md) and
+[reconciliation and replay](../07-operations/10-reconciliation-and-replay.md).
 
 ## Phase 6 — Make it clever
 

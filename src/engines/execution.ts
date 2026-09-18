@@ -169,6 +169,7 @@ export class ExecutionEngine {
         payload: {
           decisionId: decision.id,
           decisionHash: decision.hash,
+          bundle: decision.bundle,
           benefits: benefits.value.length,
           payableReduction: decision.payableReduction.minor.toString(),
           ...(context.subject.id === undefined ? {} : { subjectId: context.subject.id }),

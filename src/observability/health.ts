@@ -16,7 +16,7 @@
 import type { Result } from "../kernel/result.ts";
 import { ok } from "../kernel/result.ts";
 import type { Instant } from "../universal/temporal/chronology.ts";
-import { reconcile, verifyLedger } from "../ledger/payout.ts";
+import { ReconciliationService } from "../ledger/reconciliation.ts";
 import { availableOf } from "../ledger/settlement.ts";
 import type { EngineDeps } from "../engines/deps.ts";
 import { METRICS } from "./metrics.ts";
@@ -53,6 +53,7 @@ const WORST: Record<HealthStatus, number> = { healthy: 0, degraded: 1, unhealthy
 
 export class HealthEngine {
   readonly #deps: EngineDeps;
+  readonly #reconciliation: ReconciliationService;
   readonly #defaults: { fundingWarnPercent: number; staleReservationSeconds: number };
 
   constructor(
@@ -61,9 +62,11 @@ export class HealthEngine {
       fundingWarnPercent: 80,
       staleReservationSeconds: 3600,
     },
+    reconciliation: ReconciliationService = new ReconciliationService(deps.store),
   ) {
     this.#deps = deps;
     this.#defaults = defaults;
+    this.#reconciliation = reconciliation;
   }
 
   async check(tenant: string, options: HealthOptions = {}): Promise<Result<HealthReport>> {
@@ -97,28 +100,33 @@ export class HealthEngine {
     });
   }
 
-  /** Does the ledger net to zero in every unit? Anything else is an incident. */
+  /**
+   * Does the ledger net to zero in every unit? Anything else is an incident.
+   *
+   * Reads from the latest snapshot and folds only what came after it. This runs
+   * every minute, so scanning the whole ledger here meant the health check got
+   * slower forever and would eventually have become the outage.
+   */
   async #ledger(tenant: string): Promise<HealthCheck> {
-    const entries = await this.#deps.store.ledger.all(tenant);
-    if (!entries.ok) {
-      return { name: "ledger", status: "unhealthy", detail: entries.error.message };
+    const verified = await this.#reconciliation.verify(tenant);
+    if (!verified.ok) {
+      return { name: "ledger", status: "unhealthy", detail: verified.error.message };
     }
-    const verified = verifyLedger(entries.value);
-    this.#deps.telemetry.gauge(METRICS.ledgerBalanced, verified.ok ? 1 : 0, { tenant });
+    this.#deps.telemetry.gauge(METRICS.ledgerBalanced, verified.value.balanced ? 1 : 0, { tenant });
 
-    if (verified.ok) {
+    if (verified.value.balanced) {
       return {
         name: "ledger",
         status: "healthy",
-        detail: `${entries.value.length} entries net to zero in ${verified.value.units.length} unit(s)`,
-        data: { entries: entries.value.length, units: verified.value.units },
+        detail: `balanced in ${verified.value.units.length} unit(s) through entry ${verified.value.throughSeq}`,
+        data: { units: verified.value.units, throughSeq: verified.value.throughSeq },
       };
     }
     return {
       name: "ledger",
       status: "unhealthy",
       detail: "the ledger does not net to zero; value has been created or destroyed",
-      data: { ...verified.error.details, positions: reconcile(entries.value).length },
+      data: { imbalances: verified.value.imbalances, throughSeq: verified.value.throughSeq },
     };
   }
 

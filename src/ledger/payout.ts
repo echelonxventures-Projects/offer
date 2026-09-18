@@ -15,13 +15,8 @@ import type { EconomicAuthority } from "../universal/economic/authority.ts";
 import type { LedgerEntry } from "./ledger.ts";
 import { assertBalanced, signedMinor } from "./ledger.ts";
 
-export interface AccountPosition {
-  readonly accountId: string;
-  readonly unit: string;
-  /** Positive means a debit balance, negative a credit balance. */
-  readonly netMinor: bigint;
-  readonly entries: number;
-}
+export type { AccountPosition } from "./positions.ts";
+import type { AccountPosition } from "./positions.ts";
 
 /** Net every account in the ledger, per unit. */
 export function reconcile(entries: readonly LedgerEntry[]): AccountPosition[] {

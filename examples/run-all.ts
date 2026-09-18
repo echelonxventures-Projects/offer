@@ -13,6 +13,7 @@ const examples = [
   "08-operations.ts",
   "09-api.ts",
   "10-authoring.ts",
+  "11-scale.ts",
 ];
 
 for (const example of examples) {

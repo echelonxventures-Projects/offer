@@ -764,17 +764,24 @@ export class Capabilities {
   }
 
   async settle(request: { tenant: string }): Promise<Result<{
-    positions: AccountPosition[];
+    positions: readonly AccountPosition[];
     balanced: boolean;
-    entries: number;
+    /** Highest ledger sequence included. Entries written after are not here. */
+    throughSeq: number;
+    /** Entries folded on top of the snapshot, i.e. how much work this cost. */
+    foldedEntries: number;
   }>> {
-    const entries = await this.#platform.store.ledger.all(request.tenant);
-    if (!entries.ok) return entries;
-    const verified = verifyLedger(entries.value);
+    const positions = await this.#platform.reconciliation.positions(request.tenant);
+    if (!positions.ok) return positions;
+
+    const verified = await this.#platform.reconciliation.verify(request.tenant);
+    if (!verified.ok) return verified;
+
     return ok({
-      positions: reconcile(entries.value),
-      balanced: verified.ok,
-      entries: entries.value.length,
+      positions: positions.value.positions,
+      balanced: verified.value.balanced,
+      throughSeq: positions.value.throughSeq,
+      foldedEntries: positions.value.foldedEntries,
     });
   }
 
@@ -793,8 +800,8 @@ export class Capabilities {
     const unit = this.#platform.economic.units.require(request.unit);
     if (!unit.ok) return unit;
 
-    const entries = await this.#platform.store.ledger.all(request.tenant);
-    if (!entries.ok) return entries;
+    const positions = await this.#platform.reconciliation.positions(request.tenant);
+    if (!positions.ok) return positions;
 
     const payout = requestPayout(
       {
@@ -808,7 +815,7 @@ export class Capabilities {
         economic: this.#platform.economic,
         ...(request.memo === undefined ? {} : { memo: request.memo }),
       },
-      reconcile(entries.value),
+      positions.value.positions,
     );
     if (!payout.ok) return payout;
 

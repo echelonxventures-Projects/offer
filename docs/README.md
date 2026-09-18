@@ -108,6 +108,7 @@ Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
 | [0015](06-adr/0015-the-hardcoding-audit.md) | The hardcoding audit |
 | [0016](06-adr/0016-identity-at-the-gateway.md) | Identity at the gateway, not in the capability |
 | [0017](06-adr/0017-preview-as-a-publish-gate.md) | Preview as a publish gate |
+| [0018](06-adr/0018-snapshots-and-bundle-versions.md) | Snapshots and bundle versions |
 
 ## 07 — Operations
 
@@ -122,6 +123,7 @@ Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
 | [07 Maintenance](07-operations/07-maintenance.md) | What runs periodically, and what breaks if it does not |
 | [08 API](07-operations/08-api.md) | Running the HTTP layer: pipeline, roles, rate limits |
 | [09 Authoring](07-operations/09-authoring.md) | Checking an offer before it can hurt anybody |
+| [10 Reconciliation and replay](07-operations/10-reconciliation-and-replay.md) | Balances without rescanning history; re-examining a disputed decision |
 
 ## 08 — Roadmap
 

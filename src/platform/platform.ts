@@ -49,6 +49,7 @@ import { HealthEngine } from "../observability/health.ts";
 import { AlertEngine } from "../observability/alerts.ts";
 import type { MetricReader } from "../observability/alerts.ts";
 import { AuditService } from "../audit/audit-service.ts";
+import { ReconciliationService } from "../ledger/reconciliation.ts";
 import type { AuditAnchor } from "../audit/anchor.ts";
 import { MaintenanceRunner } from "../operations/maintenance.ts";
 import { PreviewEngine } from "../authoring/preview.ts";
@@ -62,6 +63,8 @@ import { DEFAULT_PROFILES } from "../profiles/index.ts";
 import type { PlatformStore } from "../adapters/store.ts";
 import { MemoryPlatformStore } from "../adapters/memory-store.ts";
 import { Capabilities } from "../capabilities/capabilities.ts";
+import type { BundleVersion } from "./bundle.ts";
+import { computeBundleVersion, revisionOf } from "./bundle.ts";
 import type { DeepPartial, PlatformConfig } from "./config.ts";
 import { resolveConfig } from "./config.ts";
 import type { Telemetry } from "../observability/telemetry.ts";
@@ -121,6 +124,8 @@ export class GoipPlatform {
   readonly health: HealthEngine;
   readonly alerts: AlertEngine;
   readonly auditService: AuditService;
+  /** Snapshot-backed balances; never rescans the whole ledger. */
+  readonly reconciliation: ReconciliationService;
   /** Runs an offer against sample contexts before it is published. */
   readonly preview: PreviewEngine;
   /** Everything that needs running periodically. The host owns the timer. */
@@ -133,6 +138,9 @@ export class GoipPlatform {
 
   /** Every registry in the deployment, by name. The extension surface. */
   readonly registries: Record<string, Registry<{ key: string; label: string }>>;
+
+  #bundle?: BundleVersion;
+  #bundleRevision = -1;
 
   constructor(options: PlatformOptions = {}) {
     this.ids = options.ids ?? randomIdFactory();
@@ -202,7 +210,9 @@ export class GoipPlatform {
       this.context.resolvers.register(resolver);
     }
 
-    this.decisions = new DecisionEngine(this.deps, objectives, this.config.stacking.exhaustiveLimit);
+    this.decisions = new DecisionEngine(this.deps, objectives, this.config.stacking.exhaustiveLimit, () =>
+      this.bundleVersion().id,
+    );
     this.executions = new ExecutionEngine(this.deps);
     this.governance = new GovernanceEngine(this.deps, policies);
     this.risk = new RiskEngine(this.deps, riskSignals, {
@@ -228,6 +238,7 @@ export class GoipPlatform {
     this.health = new HealthEngine(this.deps, this.config.health);
     this.alerts = new AlertEngine();
     this.auditService = new AuditService(this.store, this.temporal, options.anchor);
+    this.reconciliation = new ReconciliationService(this.store);
     this.maintenance = new MaintenanceRunner(
       {
         reaper: this.reaper,
@@ -235,6 +246,7 @@ export class GoipPlatform {
         health: this.health,
         telemetry: this.telemetry,
         config: this.config.maintenance,
+        reconciliation: this.reconciliation,
       },
       {
         alerts: this.alerts,
@@ -274,6 +286,22 @@ export class GoipPlatform {
     } as Record<string, Registry<{ key: string; label: string }>>;
 
     this.capabilities = new Capabilities(this);
+  }
+
+  /**
+   * The registry bundle this deployment is running.
+   *
+   * Cached, and recomputed only when a registry has actually been mutated —
+   * every registry carries a revision counter, so this costs a sum of integers
+   * on the decision path rather than a rehash of two hundred keys.
+   */
+  bundleVersion(): BundleVersion {
+    const revision = revisionOf(this.registries);
+    if (this.#bundle === undefined || revision !== this.#bundleRevision) {
+      this.#bundle = computeBundleVersion(this.registries);
+      this.#bundleRevision = revision;
+    }
+    return this.#bundle;
   }
 
   /** Machine-readable inventory of this deployment's extension surface. */

@@ -26,7 +26,13 @@ health reports reservations that are about to be released.
 | 20 | `audit.checkpoint` | 1 hr | Verification stays O(all of history) and gets slower forever. |
 | 30 | `audit.anchor` | 1 hr | A wholesale rewrite of the chain becomes undetectable. |
 | 40 | `audit.reconcile` | 1 hr | You have anchors but never compare them, which is the same as not having them. |
+| 50 | `ledger.snapshot` | 1 hr | Reconciliation rescans the whole ledger, and the health check does it every minute. |
 | 90 | `health.check` | 1 min | Nothing notices an unbalanced ledger or a broken chain. |
+
+`ledger.snapshot` fails loudly rather than silently when the ledger does not
+balance: a snapshot asserts the balances up to that point are trusted, and
+recording one over a hole would make the hole permanent. See
+[reconciliation and replay](10-reconciliation-and-replay.md).
 
 `audit.anchor` and `audit.reconcile` are **optional**: with no anchor configured
 they report `skipped`, not `failed`. Not anchoring is a deployment choice, not

@@ -62,6 +62,15 @@ export interface Decision {
   readonly rejected: readonly RejectedExchange[];
   readonly displaced: readonly ConflictNote[];
 
+  /**
+   * The registry bundle that produced this decision.
+   *
+   * A decision is a pure function of its context *and* the loaded registries.
+   * Recording only the context left a hole: a replay could differ because a
+   * benefit type was added, and nothing would say so.
+   */
+  readonly bundle: string;
+
   readonly searchMode: "exhaustive" | "greedy";
   readonly combinationsConsidered: number;
   readonly candidatesConsidered: number;
@@ -79,9 +88,17 @@ export class DecisionEngine {
   readonly #stacking: StackingEngine;
   readonly #objectives: Registry<DecisionObjective>;
 
-  constructor(deps: EngineDeps, objectives: Registry<DecisionObjective>, exhaustiveLimit?: number) {
+  readonly #bundleId: () => string;
+
+  constructor(
+    deps: EngineDeps,
+    objectives: Registry<DecisionObjective>,
+    exhaustiveLimit?: number,
+    bundleId: () => string = () => "unversioned",
+  ) {
     this.#deps = deps;
     this.#objectives = objectives;
+    this.#bundleId = bundleId;
     this.#eligibility = new EligibilityEngine(deps);
     this.#benefits = new BenefitResolutionEngine(deps);
     this.#stacking = new StackingEngine(this.#benefits, exhaustiveLimit);
@@ -191,7 +208,19 @@ export class DecisionEngine {
       });
     }
 
-    return ok({ id: this.#deps.ids.next("dec"), ...body, hash: hashValue(body) });
+    // `bundle` is provenance, not content, so it is recorded but NOT hashed.
+    //
+    // Hashing it would make every decision fail to reproduce whenever any
+    // registry changed, collapsing two genuinely different questions - "did
+    // this decision reproduce?" and "was the platform running the same rules?" -
+    // into one, and losing the ability to say that an unrelated registration
+    // did not affect the outcome.
+    return ok({
+      id: this.#deps.ids.next("dec"),
+      ...body,
+      bundle: this.#bundleId(),
+      hash: hashValue(body),
+    });
   }
 
   async #gatherCandidates(request: DecisionRequest): Promise<Result<ValueExchange[]>> {

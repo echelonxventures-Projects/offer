@@ -30,6 +30,7 @@ import type { FundingSource } from "../model/funding.ts";
 import type { Execution, ExecutionState } from "../model/execution.ts";
 import type { Amount } from "../universal/economic/amount.ts";
 import type { LedgerEntry } from "../ledger/ledger.ts";
+import type { AccountPosition } from "../ledger/positions.ts";
 import type { AuditDraft, AuditRecord } from "../audit/audit-log.ts";
 import { GENESIS_HASH, findChainBreak, sealRecord } from "../audit/audit-log.ts";
 import type { Touchpoint } from "../attribution/touchpoint.ts";
@@ -38,6 +39,7 @@ import { findBreach, findIssuanceBreach, recentWindowFor, MAX_RECENT_RETAINED } 
 import { SCHEMA } from "./sqlite-schema.ts";
 import type {
   AuditCheckpoint,
+  LedgerSnapshot,
   AuditStore,
   ConsumeLimitsRequest,
   CounterReadRequest,
@@ -718,6 +720,52 @@ class SqliteLedgerStore implements LedgerStore {
   async all(tenant: string): Promise<Result<LedgerEntry[]>> {
     const rows = all(this.conn, `SELECT document FROM ledger_entry WHERE tenant = ? ORDER BY seq`, tenant);
     return ok(rows.map((row) => decode<LedgerEntry>(text(row.document))));
+  }
+
+  async headSeq(tenant: string): Promise<Result<number>> {
+    const row = one(this.conn, `SELECT COALESCE(MAX(seq), -1) AS n FROM ledger_entry WHERE tenant = ?`, tenant);
+    return ok(row ? int(row.n) : -1);
+  }
+
+  async entriesSince(
+    tenant: string,
+    afterSeq: number,
+    limit: number,
+  ): Promise<Result<{ entries: LedgerEntry[]; lastSeq: number }>> {
+    const rows = all(
+      this.conn,
+      `SELECT seq, document FROM ledger_entry WHERE tenant = ? AND seq > ? ORDER BY seq LIMIT ?`,
+      tenant,
+      afterSeq,
+      limit,
+    );
+    const entries = rows.map((row) => decode<LedgerEntry>(text(row.document)));
+    const lastSeq = rows.length === 0 ? afterSeq : int(rows[rows.length - 1]!.seq);
+    return ok({ entries, lastSeq });
+  }
+
+  async saveSnapshot(snapshot: LedgerSnapshot): Promise<Result<LedgerSnapshot>> {
+    run(
+      this.conn,
+      `INSERT INTO ledger_snapshot (tenant, through_seq, at, positions) VALUES (?,?,?,?)
+       ON CONFLICT(tenant) DO UPDATE SET through_seq = excluded.through_seq, at = excluded.at, positions = excluded.positions`,
+      snapshot.tenant,
+      snapshot.throughSeq,
+      snapshot.at,
+      encode(snapshot.positions),
+    );
+    return ok(snapshot);
+  }
+
+  async latestSnapshot(tenant: string): Promise<Result<LedgerSnapshot | undefined>> {
+    const row = one(this.conn, `SELECT * FROM ledger_snapshot WHERE tenant = ?`, tenant);
+    if (!row) return ok(undefined);
+    return ok({
+      tenant: text(row.tenant),
+      throughSeq: int(row.through_seq),
+      at: text(row.at),
+      positions: decode<AccountPosition[]>(text(row.positions)),
+    });
   }
 }
 

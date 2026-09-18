@@ -5,6 +5,20 @@ not the effort to build it.
 
 ---
 
+## Closed in Phase 5
+
+| Was | Now |
+| --- | --- |
+| **`settle`, `pay` and health rescanned the whole ledger** | Snapshot-backed fold, in bounded batches, reporting how much it folded |
+| **Decisions did not record which registries produced them** | Every decision and reservation carries a bundle version |
+| **A decision could not be replayed once registries changed** | `replayDecision` — and it distinguishes "did not reproduce" from "the rules changed" |
+| No way to say what changed between two registry states | `compareBundles` names the registries that moved |
+| `settle` did not say what it had counted | Returns `throughSeq` and `foldedEntries` |
+
+Verified by `test/reconciliation.test.ts` (20), `test/replay.test.ts` (17),
+`examples/11-scale.ts` and
+[ADR 0018](../06-adr/0018-snapshots-and-bundle-versions.md).
+
 ## Closed in Phase 4
 
 | Was | Now |
@@ -90,17 +104,32 @@ It is now one call from any scheduler rather than unwritten code.
 **Fix:** a cron entry, a `setInterval`, or a Kubernetes CronJob. See
 [maintenance](../07-operations/07-maintenance.md).
 
-## High — will cause an incident
-
-### No registry bundle versioning
-Decisions do not record which registry version produced them.
-
-**Consequence:** a decision cannot be replayed exactly once registries change,
-which weakens dispute resolution — the thing the audit chain exists for.
-
 ---
 
 ## Medium — real limitations, work around them
+
+### A bundle version hashes registry keys, not behaviour
+Change the arithmetic inside a benefit handler without touching its key and the
+bundle version is unchanged.
+**Consequence:** a replay can report "same bundle" across a genuine behavioural
+change, which is the one conclusion that means *investigate*.
+**Mitigation:** a bundle version is evidence, not proof. Record it alongside the
+deployment's own build identifier, which is what moves when code moves. Stated
+at the top of `src/platform/bundle.ts`.
+
+### Ledger snapshots are per tenant and single-row
+One row per tenant holds every account position.
+**Consequence:** a tenant with very high write volume will find the hourly job
+folding a lot between snapshots.
+**Fix:** shorten `intervalSeconds` on `ledger.snapshot`. Configuration, not a
+redesign. `foldedEntries` makes the need visible before it hurts.
+
+### Replay requires the caller to supply the context
+The platform does not store decision contexts — they hold customer data and are
+the largest thing per decision by an order of magnitude.
+**Consequence:** a decision whose context was not retained downstream cannot be
+replayed, only read.
+**Deliberate.** See [ADR 0018](../06-adr/0018-snapshots-and-bundle-versions.md).
 
 ### Time zones are fixed offsets
 No political daylight-saving rules. An offer ending at "local midnight" across a
@@ -236,6 +265,10 @@ failure mode in the runbook has a metric, a health check or an alert behind it.
 Phase 3 closed the identity gap, which was the largest. A caller must now
 authenticate, is authorised per capability and per tenant, is rate limited, and
 cannot name itself as somebody else.
+
+Phase 5 closed the two that would have degraded silently: reconciliation no
+longer rescans a table that only grows, and a decision now records the rules it
+was made under, so a dispute can be answered rather than argued.
 
 What remains critical is narrower: **the durable adapter is single-writer**, and
 **nothing triggers maintenance**. Both are unwritten work rather than design

@@ -124,6 +124,16 @@ CREATE INDEX IF NOT EXISTS ix_ledger_account ON ledger_entry (tenant, account_id
 CREATE INDEX IF NOT EXISTS ix_ledger_ref     ON ledger_entry (tenant, reference_id);
 CREATE INDEX IF NOT EXISTS ix_ledger_seq     ON ledger_entry (tenant, seq);
 
+-- Netted balances as of a sequence number, so reconciliation folds only what
+-- is new. Without this, answering "what is each account worth" rescans the
+-- fastest-growing table in the system, forever.
+CREATE TABLE IF NOT EXISTS ledger_snapshot (
+  tenant       TEXT NOT NULL PRIMARY KEY,
+  through_seq  INTEGER NOT NULL,
+  at           TEXT NOT NULL,
+  positions    TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS audit_record (
   tenant    TEXT NOT NULL,
   seq       INTEGER NOT NULL,

@@ -29,6 +29,7 @@ import { Mutex } from "./mutex.ts";
 import { findBreach, findIssuanceBreach, pruneRecent, recentWindowFor } from "./limit-rules.ts";
 import type {
   AuditCheckpoint,
+  LedgerSnapshot,
   AuditStore,
   ConsumeLimitsRequest,
   CounterReadRequest,
@@ -74,6 +75,7 @@ interface State {
   executions: Map<string, Execution>;
   executionsByKey: Map<string, string>;
   ledger: LedgerEntry[];
+  ledgerSnapshots: Map<string, LedgerSnapshot>;
   audit: Map<string, AuditRecord[]>;
   checkpoints: Map<string, AuditCheckpoint>;
   touchpoints: Touchpoint[];
@@ -88,6 +90,7 @@ function emptyState(): State {
     executions: new Map(),
     executionsByKey: new Map(),
     ledger: [],
+    ledgerSnapshots: new Map(),
     audit: new Map(),
     checkpoints: new Map(),
     touchpoints: [],
@@ -118,6 +121,7 @@ function snapshot(state: State): State {
     executions: new Map(state.executions),
     executionsByKey: new Map(state.executionsByKey),
     ledger: [...state.ledger],
+    ledgerSnapshots: new Map(state.ledgerSnapshots),
     audit: new Map([...state.audit].map(([k, records]) => [k, [...records]])),
     checkpoints: new Map(state.checkpoints),
     touchpoints: [...state.touchpoints],
@@ -469,7 +473,42 @@ class MemLedgerStore implements LedgerStore {
   }
 
   async all(tenant: string): Promise<Result<LedgerEntry[]>> {
-    return ok(this.s().ledger.filter((e) => e.tenant === tenant));
+    return ok(this.#forTenant(tenant));
+  }
+
+  /**
+   * Sequence is the tenant-scoped append order.
+   *
+   * Derived from position rather than stored, which is fine for an in-memory
+   * array and is exactly what a real adapter must NOT do - it needs a durable
+   * monotonic column, which the SQLite schema has.
+   */
+  #forTenant(tenant: string): LedgerEntry[] {
+    return this.s().ledger.filter((entry) => entry.tenant === tenant);
+  }
+
+  async headSeq(tenant: string): Promise<Result<number>> {
+    return ok(this.#forTenant(tenant).length - 1);
+  }
+
+  async entriesSince(
+    tenant: string,
+    afterSeq: number,
+    limit: number,
+  ): Promise<Result<{ entries: LedgerEntry[]; lastSeq: number }>> {
+    const all = this.#forTenant(tenant);
+    const from = Math.max(0, afterSeq + 1);
+    const entries = all.slice(from, from + limit);
+    return ok({ entries, lastSeq: from + entries.length - 1 });
+  }
+
+  async saveSnapshot(snapshot: LedgerSnapshot): Promise<Result<LedgerSnapshot>> {
+    this.s().ledgerSnapshots.set(snapshot.tenant, snapshot);
+    return ok(snapshot);
+  }
+
+  async latestSnapshot(tenant: string): Promise<Result<LedgerSnapshot | undefined>> {
+    return ok(this.s().ledgerSnapshots.get(tenant));
   }
 }
 

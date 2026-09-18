@@ -45,7 +45,7 @@ func main() {
 	fmt.Println("GOIP conformance - independent Go implementation")
 	fmt.Printf("vectors: %s\n\n", root)
 
-	totalPassed, totalFailed, totalSkipped := 0, 0, 0
+	totalPassed, totalFailed, totalSkipped, totalSetup := 0, 0, 0, 0
 	var failures []string
 
 	for _, file := range files {
@@ -67,7 +67,7 @@ func main() {
 			continue
 		}
 
-		passed, failed := 0, 0
+		passed, failed, setup := 0, 0, 0
 		for _, c := range suite.Cases {
 			input, err := decodeToMap(c.Input)
 			if err != nil {
@@ -83,7 +83,11 @@ func main() {
 				continue
 			}
 			if actual == nil {
-				continue // setup case
+				// A setup case seeds a fixture (a spatial tree, a shared context)
+				// and asserts nothing. Counted separately so the total reconciles
+				// with the vector file's case count instead of quietly shrinking.
+				setup++
+				continue
 			}
 
 			expected, err := decodeToMap(c.Expect)
@@ -111,6 +115,7 @@ func main() {
 		fmt.Printf("  %-4s %-14s %4d cases   %s\n", suite.Level, suite.Suite, passed+failed, status)
 		totalPassed += passed
 		totalFailed += failed
+		totalSetup += setup
 	}
 
 	fmt.Println()
@@ -126,7 +131,7 @@ func main() {
 		fmt.Println()
 	}
 
-	fmt.Printf("passed %d, failed %d, skipped %d\n", totalPassed, totalFailed, totalSkipped)
+	fmt.Printf("passed %d, failed %d, skipped %d, setup %d\n", totalPassed, totalFailed, totalSkipped, totalSetup)
 	if totalFailed > 0 {
 		os.Exit(1)
 	}

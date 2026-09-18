@@ -23,7 +23,10 @@ import type { IdFactory } from "../kernel/ids.ts";
 import type { Amount } from "../universal/economic/amount.ts";
 import { allocate, fromDecimal, subtract, zero } from "../universal/economic/amount.ts";
 import type { EconomicAuthority } from "../universal/economic/authority.ts";
-import type { FundingAllocation, FundingModel, FundingSource, FundingSpec } from "../model/funding.ts";
+import type { FundingAllocation, FundingModel, FundingSource, FundingSpec, PartyRef } from "../model/funding.ts";
+import type { Registry } from "../registry/registry.ts";
+import type { AccountNaming, PostingRule } from "./posting.ts";
+import { resolvePosting } from "./posting.ts";
 import type { EffectKind } from "../model/benefit.ts";
 import type { LedgerEntry } from "./ledger.ts";
 import { assertBalanced } from "./ledger.ts";
@@ -157,13 +160,16 @@ function insufficient(cost: Amount, shortfall: bigint, sourceIds: string[]): Res
  * lands in the same account without a lookup table.
  * ------------------------------------------------------------------ */
 
-export const accountIds = {
-  expense: (funderId: string, unit: string) => `exp:${funderId}:${unit}`,
-  clearing: (tenant: string, unit: string) => `clr:${tenant}:${unit}`,
-  subjectWallet: (subjectId: string, unit: string) => `liab:wallet:${subjectId}:${unit}`,
-  pointsLiability: (subjectId: string, unit: string) => `liab:points:${subjectId}:${unit}`,
-  payable: (kind: string, partyId: string, unit: string) => `pay:${kind}:${partyId}:${unit}`,
-};
+/**
+ * Account naming and posting rules moved to `posting.ts` in Phase 3.
+ *
+ * They were a template-literal object and an `if (effect.key === ...)` chain,
+ * which meant a deployment with its own chart of accounts had to fork, and a
+ * new effect kind had to edit the ledger. Both are now injectable.
+ */
+export { defaultAccountNaming } from "./posting.ts";
+export type { AccountNaming, PostingRule } from "./posting.ts";
+
 
 export interface PostBenefitInput {
   readonly tenant: string;
@@ -175,10 +181,14 @@ export interface PostBenefitInput {
   readonly value: Amount;
   readonly funding: readonly FundingAllocation[];
   readonly subjectId?: string;
-  /** For commissions: who is owed. Defaults to the subject. */
-  readonly payee?: { readonly kind: string; readonly id: string };
+  /** For third-party benefits: who is owed. Defaults to the subject. */
+  readonly payee?: PartyRef;
   readonly ids: IdFactory;
   readonly memo?: string;
+  /** Where the credit side lands, by effect. */
+  readonly postingRules: Registry<PostingRule>;
+  /** How account identifiers are formed. */
+  readonly accounts: AccountNaming;
 }
 
 /** Produce the balanced entries for one benefit. */
@@ -205,7 +215,7 @@ export function postBenefit(input: PostBenefitInput): Result<LedgerEntry[]> {
     if (allocation.amount.minor === 0n) continue;
     entries.push(
       line(
-        accountIds.expense(allocation.sourceId, allocation.amount.unit),
+        input.accounts.expense(allocation.sourceId, allocation.amount.unit),
         "debit",
         allocation.amount,
         `funded by ${allocation.party.kind}:${allocation.party.id}`,
@@ -219,41 +229,26 @@ export function postBenefit(input: PostBenefitInput): Result<LedgerEntry[]> {
     });
   }
 
-  // Credit side: wherever the value landed.
-  const creditAccount = creditAccountFor(input);
-  if (!creditAccount.ok) return creditAccount;
-  entries.push(line(creditAccount.value.id, "credit", value, creditAccount.value.memo));
+  // Credit side: wherever the effect says the value landed. The ledger does not
+  // know what a commission is; it looks up the rule the effect named.
+  const rule = input.postingRules.require(effect.posting);
+  if (!rule.ok) return rule;
+
+  const target = resolvePosting(rule.value, {
+    tenant,
+    value,
+    effectKey: effect.key,
+    accounts: input.accounts,
+    ...(input.subjectId === undefined ? {} : { subjectId: input.subjectId }),
+    ...(input.payee === undefined ? {} : { payee: input.payee }),
+  });
+  if (!target.ok) return target;
+  entries.push(line(target.value.accountId, "credit", value, target.value.memo));
 
   const balanced = assertBalanced(entries);
   return balanced.ok ? ok(entries) : balanced;
 }
 
-function creditAccountFor(input: PostBenefitInput): Result<{ id: string; memo: string }> {
-  const { effect, value, tenant, subjectId, payee } = input;
-
-  if (effect.key === "commission") {
-    const target = payee ?? (subjectId ? { kind: "subject", id: subjectId } : null);
-    if (!target) return fail(ErrorCode.INVALID_REQUEST, "a commission needs a payee");
-    return ok({
-      id: accountIds.payable(target.kind, target.id, value.unit),
-      memo: `owed to ${target.kind}:${target.id}`,
-    });
-  }
-
-  if (effect.createsLiability) {
-    if (!subjectId) {
-      return fail(ErrorCode.INVALID_REQUEST, `effect '${effect.key}' creates a liability but no subject is identified`);
-    }
-    const id =
-      effect.key === "points_grant"
-        ? accountIds.pointsLiability(subjectId, value.unit)
-        : accountIds.subjectWallet(subjectId, value.unit);
-    return ok({ id, memo: `owed to subject ${subjectId}` });
-  }
-
-  // Price reductions and waivers net against the merchant settlement run.
-  return ok({ id: accountIds.clearing(tenant, value.unit), memo: "netted at settlement" });
-}
 
 /** Reverse a set of entries: same accounts, opposite directions. */
 export function reverseEntries(

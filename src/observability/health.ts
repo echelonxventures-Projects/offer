@@ -53,9 +53,17 @@ const WORST: Record<HealthStatus, number> = { healthy: 0, degraded: 1, unhealthy
 
 export class HealthEngine {
   readonly #deps: EngineDeps;
+  readonly #defaults: { fundingWarnPercent: number; staleReservationSeconds: number };
 
-  constructor(deps: EngineDeps) {
+  constructor(
+    deps: EngineDeps,
+    defaults: { fundingWarnPercent: number; staleReservationSeconds: number } = {
+      fundingWarnPercent: 80,
+      staleReservationSeconds: 3600,
+    },
+  ) {
     this.#deps = deps;
+    this.#defaults = defaults;
   }
 
   async check(tenant: string, options: HealthOptions = {}): Promise<Result<HealthReport>> {
@@ -66,8 +74,12 @@ export class HealthEngine {
     const checks: HealthCheck[] = [
       await this.#ledger(tenant),
       await this.#audit(tenant, options.auditFromSeq),
-      await this.#funding(tenant, options.fundingWarnPercent ?? 80),
-      await this.#reservations(tenant, options.staleReservationSeconds ?? 3600, now.value),
+      await this.#funding(tenant, options.fundingWarnPercent ?? this.#defaults.fundingWarnPercent),
+      await this.#reservations(
+        tenant,
+        options.staleReservationSeconds ?? this.#defaults.staleReservationSeconds,
+        now.value,
+      ),
     ];
 
     let status: HealthStatus = "healthy";

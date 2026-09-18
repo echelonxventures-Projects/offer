@@ -31,6 +31,7 @@ Organised so you can start anywhere, but if you are new, read in this order:
 | [05 Data model](01-architecture/05-data-model.md) | `ValueExchange` and every part of it |
 | [06 Incentive graph](01-architecture/06-incentive-graph.md) | Nodes, edges, and the queries they answer |
 | [07 Deployment topologies](01-architecture/07-deployment-topologies.md) | Embedded, service, edge, multi-region |
+| [08 What is fixed](01-architecture/08-what-is-fixed.md) | The three tiers: deployment, specification, invariant |
 
 ## 02 — Domains
 
@@ -104,6 +105,7 @@ Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
 | [0012](06-adr/0012-sqlite-as-the-reference-durable-adapter.md) | SQLite as the reference durable adapter |
 | [0013](06-adr/0013-conformance-vectors-as-the-portability-contract.md) | Conformance vectors as the portability contract |
 | [0014](06-adr/0014-observability-as-ports-not-vendors.md) | Observability as ports, not vendors |
+| [0015](06-adr/0015-the-hardcoding-audit.md) | The hardcoding audit |
 
 ## 07 — Operations
 

@@ -32,7 +32,10 @@ import { ruleFunctionRegistry } from "../rules/functions.ts";
 import { lifecycleRegistry } from "../model/lifecycle.ts";
 import { benefitTypeRegistry, effectKindRegistry } from "../model/benefit.ts";
 import { DEFAULT_BENEFIT_TYPES } from "../model/benefit-types.ts";
+import { acquisitionModeRegistry } from "../model/acquisition.ts";
 import { fundingModelRegistry, partyKindRegistry } from "../model/funding.ts";
+import { postingRuleRegistry, defaultAccountNaming } from "../ledger/posting.ts";
+import type { AccountNaming } from "../ledger/posting.ts";
 import type { DomainProfile } from "../model/value-exchange.ts";
 
 import type { EngineDeps } from "../engines/deps.ts";
@@ -56,6 +59,8 @@ import { DEFAULT_PROFILES } from "../profiles/index.ts";
 import type { PlatformStore } from "../adapters/store.ts";
 import { MemoryPlatformStore } from "../adapters/memory-store.ts";
 import { Capabilities } from "../capabilities/capabilities.ts";
+import type { DeepPartial, PlatformConfig } from "./config.ts";
+import { resolveConfig } from "./config.ts";
 import type { Telemetry } from "../observability/telemetry.ts";
 import { noopTelemetry } from "../observability/telemetry.ts";
 
@@ -80,6 +85,17 @@ export interface PlatformOptions {
    * production deployment usually points this at the same collector it exports.
    */
   readonly metricReader?: MetricReader;
+  /**
+   * How ledger account identifiers are formed. Replace it wholesale to map onto
+   * an existing chart of accounts rather than adopting this one.
+   */
+  readonly accounts?: AccountNaming;
+  /**
+   * Safety and cost parameters: rule limits, the stacking search boundary,
+   * retention caps, risk thresholds. Business variation belongs in registries;
+   * this is "how much work before we refuse", which is an operator's call.
+   */
+  readonly config?: DeepPartial<PlatformConfig>;
 }
 
 export class GoipPlatform {
@@ -107,6 +123,7 @@ export class GoipPlatform {
 
   readonly deps: EngineDeps;
   readonly telemetry: Telemetry;
+  readonly config: PlatformConfig;
   readonly capabilities: Capabilities;
 
   /** Every registry in the deployment, by name. The extension surface. */
@@ -115,6 +132,7 @@ export class GoipPlatform {
   constructor(options: PlatformOptions = {}) {
     this.ids = options.ids ?? randomIdFactory();
     this.telemetry = options.telemetry ?? noopTelemetry;
+    this.config = resolveConfig(options.config);
     this.store = options.store ?? new MemoryPlatformStore();
 
     this.economic = new EconomicAuthority();
@@ -126,7 +144,9 @@ export class GoipPlatform {
     const functions = ruleFunctionRegistry();
     const benefitTypes = benefitTypeRegistry().registerAll(DEFAULT_BENEFIT_TYPES);
     const effectKinds = effectKindRegistry();
+    const acquisitionModes = acquisitionModeRegistry();
     const fundingModels = fundingModelRegistry();
+    const postingRules = postingRuleRegistry();
     const partyKinds = partyKindRegistry();
     const lifecycle = lifecycleRegistry();
     const objectives = objectiveRegistry();
@@ -135,13 +155,16 @@ export class GoipPlatform {
     const attributionModels = attributionModelRegistry();
     const profiles = new RegistryClass<DomainProfile>("domain-profile").registerAll(DEFAULT_PROFILES);
 
-    const evaluator = new RuleEvaluator({
-      temporal: this.temporal,
-      spatial: this.spatial,
-      economic: this.economic,
-      operators,
-      functions,
-    });
+    const evaluator = new RuleEvaluator(
+      {
+        temporal: this.temporal,
+        spatial: this.spatial,
+        economic: this.economic,
+        operators,
+        functions,
+      },
+      this.config.rules,
+    );
 
     this.deps = {
       temporal: this.temporal,
@@ -151,7 +174,10 @@ export class GoipPlatform {
       lifecycle,
       benefitTypes,
       effectKinds,
+      acquisitionModes,
       fundingModels,
+      postingRules,
+      accounts: options.accounts ?? defaultAccountNaming,
       partyKinds,
       profiles,
       evaluator,
@@ -171,14 +197,17 @@ export class GoipPlatform {
       this.context.resolvers.register(resolver);
     }
 
-    this.decisions = new DecisionEngine(this.deps, objectives);
+    this.decisions = new DecisionEngine(this.deps, objectives, this.config.stacking.exhaustiveLimit);
     this.executions = new ExecutionEngine(this.deps);
     this.governance = new GovernanceEngine(this.deps, policies);
-    this.risk = new RiskEngine(this.deps, riskSignals);
+    this.risk = new RiskEngine(this.deps, riskSignals, {
+      review: this.config.risk.reviewThreshold,
+      block: this.config.risk.blockThreshold,
+    });
     this.discovery = new DiscoveryEngine(this.deps, this.decisions.eligibility, this.decisions.benefits);
     this.attribution = new AttributionEngine(attributionModels, this.store.touchpoints);
     this.reaper = new ReservationReaper(this.deps, this.executions);
-    this.health = new HealthEngine(this.deps);
+    this.health = new HealthEngine(this.deps, this.config.health);
     this.alerts = new AlertEngine();
     this.auditService = new AuditService(this.store, this.temporal, options.anchor);
     this.maintenance = new MaintenanceRunner(
@@ -187,6 +216,7 @@ export class GoipPlatform {
         audit: this.auditService,
         health: this.health,
         telemetry: this.telemetry,
+        config: this.config.maintenance,
       },
       {
         alerts: this.alerts,
@@ -209,7 +239,9 @@ export class GoipPlatform {
       "rule-function": functions,
       "benefit-type": benefitTypes,
       "effect-kind": effectKinds,
+      "acquisition-mode": acquisitionModes,
       "funding-model": fundingModels,
+      "posting-rule": postingRules,
       "party-kind": partyKinds,
       "lifecycle-transition": lifecycle,
       "decision-objective": objectives,

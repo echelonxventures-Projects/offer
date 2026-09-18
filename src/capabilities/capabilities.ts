@@ -18,6 +18,7 @@ import type { JsonObject } from "../kernel/types.ts";
 import type { ContextRequest, ResolvedContext } from "../context/context.ts";
 import type { Grant, ValueExchange, ValueExchangeDraft } from "../model/value-exchange.ts";
 import type { LifecycleState } from "../model/lifecycle.ts";
+import { routeBetween } from "../model/lifecycle.ts";
 import type { FundingSource } from "../model/funding.ts";
 import type { Execution } from "../model/execution.ts";
 import type { Amount } from "../universal/economic/amount.ts";
@@ -176,9 +177,13 @@ export class Capabilities {
       exchange = ok(withApproval);
     }
 
-    const route: LifecycleState[] = this.#routeToActive(exchange.value.state);
+    // Derived from the transition registry, not hardcoded: a deployment that
+    // registers a custom lifecycle state gets a route through it for free.
+    const route = routeBetween(this.#platform.deps.lifecycle, exchange.value.state, "active");
+    if (!route.ok) return route;
+
     let current = exchange.value;
-    for (const next of route) {
+    for (const next of route.value) {
       const moved = await this.#platform.governance.transition(current, next, request.actor, at.value);
       if (!moved.ok) return moved;
       current = moved.value;
@@ -731,22 +736,4 @@ export class Capabilities {
     return instant.ok ? ok(instant.value.tick.toString()) : instant;
   }
 
-  /** The shortest legal path from a state to `active`. */
-  #routeToActive(from: LifecycleState): LifecycleState[] {
-    switch (from) {
-      case "draft":
-        return ["in_review", "approved", "active"];
-      case "in_review":
-        return ["approved", "active"];
-      case "approved":
-      case "scheduled":
-        return ["active"];
-      case "paused":
-        return ["active"];
-      case "active":
-        return [];
-      default:
-        return ["active"];
-    }
-  }
 }

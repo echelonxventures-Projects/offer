@@ -41,6 +41,7 @@ export interface SweepReport {
   readonly cutoff: string;
 }
 
+/** Default only; the maintenance job passes the configured batch limit. */
 export const DEFAULT_SWEEP_LIMIT = 100;
 
 export class ReservationReaper {

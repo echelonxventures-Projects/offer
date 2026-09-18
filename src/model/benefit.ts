@@ -28,11 +28,19 @@ export interface EffectKind extends RegistryEntry {
   readonly createsLiability: boolean;
   /** Must settlement move value between parties for this to be honoured? */
   readonly requiresSettlement: boolean;
+  /**
+   * Key into the posting-rule registry: where the credit side lands.
+   *
+   * Named rather than derived, so a new effect kind chooses its posting instead
+   * of the ledger growing a branch for it. See `src/ledger/posting.ts`.
+   */
+  readonly posting: string;
 }
 
 export const DEFAULT_EFFECT_KINDS: EffectKind[] = [
   {
     key: "price_reduction",
+    posting: "clearing",
     label: "Price reduction",
     description: "Reduces what the subject pays now. Discounts, promotions, subsidies at point of sale.",
     reducesPayable: true,
@@ -41,6 +49,7 @@ export const DEFAULT_EFFECT_KINDS: EffectKind[] = [
   },
   {
     key: "deferred_credit",
+    posting: "subject_wallet",
     label: "Deferred credit",
     description: "Owed to the subject after a holding period. Classic cashback.",
     reducesPayable: false,
@@ -49,6 +58,7 @@ export const DEFAULT_EFFECT_KINDS: EffectKind[] = [
   },
   {
     key: "wallet_credit",
+    posting: "subject_wallet",
     label: "Immediate wallet credit",
     reducesPayable: false,
     createsLiability: true,
@@ -56,6 +66,7 @@ export const DEFAULT_EFFECT_KINDS: EffectKind[] = [
   },
   {
     key: "points_grant",
+    posting: "subject_points",
     label: "Points grant",
     description: "Programme currency. A liability, but usually not settled in cash.",
     reducesPayable: false,
@@ -64,6 +75,7 @@ export const DEFAULT_EFFECT_KINDS: EffectKind[] = [
   },
   {
     key: "item_grant",
+    posting: "clearing",
     label: "Item grant",
     description: "A free product, service or sample added to the fulfilment.",
     reducesPayable: false,
@@ -72,6 +84,7 @@ export const DEFAULT_EFFECT_KINDS: EffectKind[] = [
   },
   {
     key: "fee_waiver",
+    posting: "clearing",
     label: "Fee waiver",
     description: "Shipping, handling or service fee removed.",
     reducesPayable: true,
@@ -80,6 +93,7 @@ export const DEFAULT_EFFECT_KINDS: EffectKind[] = [
   },
   {
     key: "entitlement_grant",
+    posting: "clearing",
     label: "Entitlement grant",
     description: "A right rather than a value: tier upgrade, lounge access, a seat.",
     reducesPayable: false,
@@ -88,6 +102,7 @@ export const DEFAULT_EFFECT_KINDS: EffectKind[] = [
   },
   {
     key: "commission",
+    posting: "third_party_payable",
     label: "Commission",
     description: "Value owed to a third party - affiliate, creator, partner - not to the buyer.",
     reducesPayable: false,

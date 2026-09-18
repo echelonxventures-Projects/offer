@@ -51,6 +51,7 @@ export interface RiskThresholds {
   readonly block: number;
 }
 
+/** Defaults; the platform passes its configured values instead. */
 export const DEFAULT_THRESHOLDS: RiskThresholds = { review: 50, block: 80 };
 
 export const DEFAULT_SIGNALS: RiskSignal[] = [

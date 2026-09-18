@@ -95,3 +95,60 @@ export function canTransition(
   }
   return ok(transition);
 }
+
+/**
+ * Shortest legal route between two states, derived from the transition table.
+ *
+ * `publish` used to carry a hardcoded `switch (from)` listing the route to
+ * `active`. That silently assumed the shipped state machine: a deployment that
+ * registered a custom state - "legal_review" between review and approval, say -
+ * would have had its own transitions ignored.
+ *
+ * Breadth-first, so the route is the shortest one and ties break on the
+ * alphabetically first target, which keeps it reproducible.
+ */
+export function routeBetween(
+  registry: Registry<LifecycleTransition>,
+  from: LifecycleState,
+  to: LifecycleState,
+): Result<LifecycleState[]> {
+  if (from === to) return ok([]);
+
+  const outgoing = new Map<string, LifecycleState[]>();
+  for (const transition of registry.list()) {
+    const targets = outgoing.get(transition.from) ?? [];
+    targets.push(transition.to);
+    outgoing.set(transition.from, targets);
+  }
+  for (const targets of outgoing.values()) targets.sort();
+
+  const previous = new Map<LifecycleState, LifecycleState>();
+  const seen = new Set<LifecycleState>([from]);
+  const queue: LifecycleState[] = [from];
+
+  while (queue.length > 0) {
+    const current = queue.shift() as LifecycleState;
+    for (const next of outgoing.get(current) ?? []) {
+      if (seen.has(next)) continue;
+      seen.add(next);
+      previous.set(next, current);
+
+      if (next === to) {
+        const route: LifecycleState[] = [next];
+        let step = current;
+        while (step !== from) {
+          route.unshift(step);
+          step = previous.get(step) as LifecycleState;
+        }
+        return ok(route);
+      }
+      queue.push(next);
+    }
+  }
+
+  return fail(ErrorCode.ILLEGAL_STATE, `no route from '${from}' to '${to}'`, {
+    from,
+    to,
+    reachable: [...seen].filter((state) => state !== from).sort(),
+  });
+}

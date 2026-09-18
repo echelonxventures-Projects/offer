@@ -15,11 +15,13 @@ import type { EconomicAuthority } from "../universal/economic/authority.ts";
 import type { Reality } from "../universal/reality/reality.ts";
 import type { LifecycleTransition } from "../model/lifecycle.ts";
 import type { BenefitType, EffectKind } from "../model/benefit.ts";
+import type { AcquisitionMode } from "../model/acquisition.ts";
 import type { FundingModel, PartyKind } from "../model/funding.ts";
 import type { RuleEvaluator } from "../rules/evaluator.ts";
 import type { PlatformStore } from "../adapters/store.ts";
 import type { DomainProfile } from "../model/value-exchange.ts";
 import type { Telemetry } from "../observability/telemetry.ts";
+import type { AccountNaming, PostingRule } from "../ledger/posting.ts";
 
 export interface EngineDeps {
   readonly temporal: TemporalAuthority;
@@ -29,7 +31,13 @@ export interface EngineDeps {
   readonly lifecycle: Registry<LifecycleTransition>;
   readonly benefitTypes: Registry<BenefitType>;
   readonly effectKinds: Registry<EffectKind>;
+  /** How a subject may come to hold an exchange. */
+  readonly acquisitionModes: Registry<AcquisitionMode>;
   readonly fundingModels: Registry<FundingModel>;
+  /** Where the credit side of each effect lands. */
+  readonly postingRules: Registry<PostingRule>;
+  /** How ledger account identifiers are formed. */
+  readonly accounts: AccountNaming;
   readonly partyKinds: Registry<PartyKind>;
   readonly profiles: Registry<DomainProfile & { key: string; label: string }>;
   readonly evaluator: RuleEvaluator;

@@ -17,6 +17,10 @@ CONTEXT → CONDITIONS → ELIGIBILITY → BENEFIT → EXECUTION → SETTLEMENT 
   **Go** implementation that reproduces every one of them.
 - **Operable.** Vendor-neutral telemetry, integrity health checks, alert rules
   that each carry a runbook link, and a scheduler-agnostic maintenance runner.
+- **Nothing that varies is compiled in.** 27 registries plus configuration, with
+  a test that greps the engines for hardcoded dispatch. What genuinely *cannot*
+  be configuration is written down rather than glossed over:
+  [what is fixed](docs/01-architecture/08-what-is-fixed.md).
 - **Exact money.** Integer minor units and `bigint` throughout. No floats, ever.
 - **Explainable.** Every decision carries the full trace of why it went that way.
 - **Auditable.** Hash-chained records; tampering is detectable and located.
@@ -163,7 +167,8 @@ nothing triggering the maintenance runner.
 
 | | |
 | --- | --- |
-| Tests | 303, across 2 storage adapters |
+| Tests | 316, across 2 storage adapters |
 | Conformance vectors | 289, across 2 language implementations |
+| Registries | 27, holding 204 entries |
 | Typecheck | strict, clean |
 | Runtime dependencies | 0 |

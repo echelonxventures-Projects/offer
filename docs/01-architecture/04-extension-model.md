@@ -256,17 +256,98 @@ singleton, two such platforms coexist in one process. See
 
 ---
 
+## Adding a posting rule
+
+Where the credit side of a benefit lands. Until the Phase 3 audit this was a
+branch in the ledger; it is now a registry.
+
+```ts
+platform.deps.postingRules.register({
+  key: "acme.escrow",
+  label: "Escrow until delivery is confirmed",
+  resolve: ({ tenant, value, accounts }) =>
+    ok({ accountId: accounts.custom(["escrow", tenant, value.unit]), memo: "held pending delivery" }),
+});
+
+platform.deps.effectKinds.register({
+  key: "acme.escrowed_credit",
+  label: "Credit held in escrow",
+  reducesPayable: false,
+  createsLiability: true,
+  requiresSettlement: true,
+  posting: "acme.escrow",     // <- names the rule
+});
+```
+
+Account identifiers are a strategy too, so a deployment with an existing chart
+of accounts replaces `AccountNaming` wholesale rather than adopting this one.
+
+## Adding an acquisition mode
+
+How a subject comes to hold an offer.
+
+```ts
+platform.deps.acquisitionModes.register({
+  key: "acme.token_held",
+  label: "Holds a qualifying token",
+  check: ({ context, exchange }) => {
+    const held = context.facets["tokens"];
+    const wanted = exchange.metadata.token;
+    return Array.isArray(held) && held.includes(wanted)
+      ? { passed: true, detail: `token ${wanted} held` }
+      : { passed: false, detail: `token ${wanted} not held` };
+  },
+});
+```
+
+The token list arrives as a **context facet**, resolved upstream — the same
+discipline rule operators follow, and for the same reason.
+
+## Adding a lifecycle state
+
+Transitions were always a registry; the *route* through them used to be
+hardcoded. It is now derived breadth-first, so inserting a state works:
+
+```ts
+platform.deps.lifecycle
+  .register({ key: "in_review->legal_review", label: "to legal", from: "in_review", to: "legal_review" })
+  .register({ key: "legal_review->approved", label: "to approved", from: "legal_review", to: "approved", requiresApproval: true });
+```
+
+`publish` now routes through `legal_review` without knowing it exists.
+
+## Tuning
+
+Safety and cost parameters are configuration, not constants:
+
+```ts
+new GoipPlatform({
+  config: {
+    stacking: { exhaustiveLimit: 14 },   // buy optimality, pay latency
+    rules: { maxNodes: 20_000 },
+    risk: { reviewThreshold: 40, blockThreshold: 70 },
+  },
+});
+```
+
 ## What is *not* extensible
 
-Stated plainly, so nobody discovers it late:
+The full accounting, in three tiers, is in
+[what is fixed](08-what-is-fixed.md). The short version:
 
-- **The capability list.** Twenty-two verbs, closed. A new verb changes the
-  platform's contract with its callers and is a version change, not config.
-- **The pipeline order.** Context before conditions before eligibility before
-  benefit before execution. Reordering is a redesign.
-- **The `ValueExchange` shape.** New *fields* are additive and cheap; a new
-  top-level concept alongside it is not.
-- **Double entry.** Every movement is two or more balancing entries. There is no
-  single-entry mode.
-- **Funding *mechanics*.** Proportional and waterfall are implemented; a model
-  needing genuinely different mechanics needs engine work.
+**Specification-level** — possible, but every conforming implementation has to
+agree: rounding modes, canonical encoding, the wire codec, error codes, the
+capability list, the limit check order, the allocation remainder order.
+
+**Invariant** — not available at any level:
+
+- **The pipeline order.** Configurable ordering makes this a workflow engine
+  with no opinion, and the order encodes real dependencies.
+- **Double entry.** Every movement balances within every unit, or the write is
+  refused. An invariant, not a policy.
+- **Exact integer money.** Floating point is not a configuration option for a
+  system that computes liabilities.
+- **The `ValueExchange` having a shape.** Fields are additive and `metadata` is
+  open, but an engine has to know where to look.
+- **A host language.** Something executes. The *contract* is language-neutral
+  and `conformance/go/` proves it.

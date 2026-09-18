@@ -128,6 +128,25 @@ idempotent, so this is wasteful rather than dangerous;
 [maintenance](../07-operations/07-maintenance.md) sets out the three ways to fix
 it. No distributed tracing — `correlationId` is the substitute.
 
+## Phase 3 prelude — The hardcoding audit ✅ **COMPLETE**
+
+Before building the HTTP and identity layer, the codebase was audited for the
+shape Law 2 forbids: a comparison against a literal that is really a registry
+key.
+
+It found three violations that had survived since Phase 0 — posting rules
+branching on `effect.key`, lifecycle routing as a hardcoded `switch`, and
+acquisition modes as a closed union — plus four magic numbers. All are fixed,
+and a guard in `test/extensibility.test.ts` greps the engines and ledger so the
+next one is caught by a test rather than by an audit three phases later.
+
+No behaviour changed: all 303 pre-existing tests passed throughout, which is the
+evidence that it was refactoring and not redesign.
+
+The boundary — what genuinely cannot be configuration, and why — is written up
+in [what is fixed](../01-architecture/08-what-is-fixed.md) and
+[ADR 0015](../06-adr/0015-the-hardcoding-audit.md).
+
 ## Phase 3 — Make it reachable
 
 **Goal: other systems can use it.**

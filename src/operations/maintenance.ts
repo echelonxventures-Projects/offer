@@ -25,9 +25,15 @@ import type { AlertEngine, AlertFiring, MetricReader } from "../observability/al
 import type { AuditService } from "../audit/audit-service.ts";
 import type { ReservationReaper } from "../engines/reaper.ts";
 
+export interface MaintenanceConfigView {
+  readonly sweepBatchLimit: number;
+  readonly staleReservationSeconds: number;
+}
+
 export interface MaintenanceContext {
   readonly tenant: string;
   readonly now: Instant;
+  readonly config: MaintenanceConfigView;
   readonly reaper: ReservationReaper;
   readonly audit: AuditService;
   readonly health: HealthEngine;
@@ -85,8 +91,13 @@ export const DEFAULT_MAINTENANCE_JOBS: MaintenanceJob[] = [
     description:
       "Without this, an abandoned checkout holds budget forever and a campaign with money left starts refusing customers. The most important job here.",
     intervalSeconds: 300,
-    async run({ tenant, now, reaper }) {
-      const swept = await reaper.sweep({ tenant, olderThanSeconds: 3600, limit: 500, now });
+    async run({ tenant, now, reaper, config }) {
+      const swept = await reaper.sweep({
+        tenant,
+        olderThanSeconds: config.staleReservationSeconds,
+        limit: config.sweepBatchLimit,
+        now,
+      });
       if (!swept.ok) return swept;
       return ok({
         summary:

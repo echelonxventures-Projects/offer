@@ -27,7 +27,13 @@ import { add, subtract, zero } from "../universal/economic/amount.ts";
 import type { BenefitResolution } from "./benefit-resolution.ts";
 import type { BenefitResolutionEngine } from "./benefit-resolution.ts";
 
-/** Above this many eligible candidates, exhaustive search is abandoned. */
+/**
+ * Default boundary between an optimal search and a bounded one.
+ *
+ * Kept as an export for readers and for the conformance documentation, but the
+ * engine takes it from configuration - a deployment that can afford more
+ * latency may buy more optimality.
+ */
 export const EXHAUSTIVE_LIMIT = 10;
 
 export interface AppliedExchange {
@@ -110,9 +116,11 @@ export function applicationOrder(members: readonly ValueExchange[]): ValueExchan
 
 export class StackingEngine {
   readonly #benefits: BenefitResolutionEngine;
+  readonly #exhaustiveLimit: number;
 
-  constructor(benefits: BenefitResolutionEngine) {
+  constructor(benefits: BenefitResolutionEngine, exhaustiveLimit: number = EXHAUSTIVE_LIMIT) {
     this.#benefits = benefits;
+    this.#exhaustiveLimit = exhaustiveLimit;
   }
 
   /**
@@ -212,7 +220,7 @@ export class StackingEngine {
       return ok({ best: empty, searchMode: "exhaustive", combinationsConsidered: 1, displaced: [] });
     }
 
-    const exhaustive = candidates.length <= EXHAUSTIVE_LIMIT;
+    const exhaustive = candidates.length <= this.#exhaustiveLimit;
     const result = exhaustive
       ? this.#exhaustive(candidates, context, score, empty)
       : this.#greedy(candidates, context, score, empty);

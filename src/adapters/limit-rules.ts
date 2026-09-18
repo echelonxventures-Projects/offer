@@ -139,8 +139,9 @@ export function pruneRecent(
   timestamps: readonly number[],
   atSeconds: number,
   windowSeconds: number | undefined,
+  maxRetained: number = MAX_RECENT_RETAINED,
 ): number[] {
   const cutoff = windowSeconds === undefined ? -Infinity : atSeconds - windowSeconds;
   const kept = timestamps.filter((seconds) => seconds > cutoff);
-  return kept.length > MAX_RECENT_RETAINED ? kept.slice(kept.length - MAX_RECENT_RETAINED) : kept;
+  return kept.length > maxRetained ? kept.slice(kept.length - maxRetained) : kept;
 }

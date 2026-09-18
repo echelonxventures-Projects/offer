@@ -79,12 +79,12 @@ export class DecisionEngine {
   readonly #stacking: StackingEngine;
   readonly #objectives: Registry<DecisionObjective>;
 
-  constructor(deps: EngineDeps, objectives: Registry<DecisionObjective>) {
+  constructor(deps: EngineDeps, objectives: Registry<DecisionObjective>, exhaustiveLimit?: number) {
     this.#deps = deps;
     this.#objectives = objectives;
     this.#eligibility = new EligibilityEngine(deps);
     this.#benefits = new BenefitResolutionEngine(deps);
-    this.#stacking = new StackingEngine(this.#benefits);
+    this.#stacking = new StackingEngine(this.#benefits, exhaustiveLimit);
   }
 
   get eligibility(): EligibilityEngine {

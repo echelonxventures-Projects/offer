@@ -25,4 +25,5 @@ export * from "./adapters/store.ts";
 export * from "./adapters/memory-store.ts";
 export * from "./profiles/index.ts";
 export * from "./capabilities/index.ts";
+export * from "./platform/config.ts";
 export * from "./platform/index.ts";

@@ -312,6 +312,8 @@ export class ExecutionEngine {
           ...(execution.subjectId === undefined ? {} : { subjectId: execution.subjectId }),
           ...(payee === undefined ? {} : { payee }),
           ids: this.#deps.ids,
+          postingRules: this.#deps.postingRules,
+          accounts: this.#deps.accounts,
         });
         if (!posted.ok) return posted;
         entries.push(...posted.value);

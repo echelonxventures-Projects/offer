@@ -23,13 +23,14 @@ import type { LifecycleState } from "./lifecycle.ts";
 /** How a subject comes to hold this exchange. */
 export interface AcquisitionSpec {
   /**
-   * automatic - applies whenever conditions hold, no action needed
-   * code      - the subject presents a code
-   * issued    - granted to a named subject in advance
-   * earned    - unlocked by meeting a condition (a loyalty threshold)
-   * referred  - obtained through another subject's referral link
+   * Key into the acquisition-mode registry.
+   *
+   * Shipped: automatic, code, issued, earned, referred. Deliberately a string
+   * rather than a union - how a subject comes to hold an offer is a business
+   * question, and a closed list makes it the platform's. See
+   * `src/model/acquisition.ts`.
    */
-  readonly mode: "automatic" | "code" | "issued" | "earned" | "referred";
+  readonly mode: string;
   /** For `code`: the literal code, or a pattern for bulk generation. */
   readonly code?: string;
   /** For `code`: whether one code serves everyone or each subject gets one. */

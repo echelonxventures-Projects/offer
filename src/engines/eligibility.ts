@@ -203,44 +203,29 @@ export class EligibilityEngine {
     });
   }
 
+  /**
+   * Delegates to the registered acquisition mode.
+   *
+   * This was a `switch` over five literal strings. Registering a sixth - "holds
+   * a qualifying membership token", say - now requires no change here.
+   */
   #checkAcquisition(input: EligibilityInput): { passed: boolean; detail: string } {
     const { exchange, context, presentedCodes = [], grants = [] } = input;
+
+    const mode = this.#deps.acquisitionModes.get(exchange.acquisition.mode);
+    if (!mode) {
+      return {
+        passed: false,
+        detail: `unknown acquisition mode '${exchange.acquisition.mode}'`,
+      };
+    }
+
     const relevant = grants.filter(
-      (g) => g.valueExchangeId === exchange.id && (g.state === "issued" || g.state === "activated"),
+      (grant) =>
+        grant.valueExchangeId === exchange.id && (grant.state === "issued" || grant.state === "activated"),
     );
 
-    switch (exchange.acquisition.mode) {
-      case "automatic":
-        return { passed: true, detail: "applies automatically" };
-
-      case "code": {
-        const expected = exchange.acquisition.code?.toUpperCase();
-        const presented = presentedCodes.map((c) => c.trim().toUpperCase());
-        if (exchange.acquisition.codeSharing === "unique") {
-          const held = relevant.find((g) => g.code && presented.includes(g.code.toUpperCase()));
-          return held
-            ? { passed: true, detail: `unique code accepted (grant ${held.id})` }
-            : { passed: false, detail: "no matching unique code presented" };
-        }
-        return expected !== undefined && presented.includes(expected)
-          ? { passed: true, detail: "shared code accepted" }
-          : { passed: false, detail: "code not presented" };
-      }
-
-      case "issued":
-      case "earned":
-      case "referred": {
-        if (context.subject.anonymous) {
-          return { passed: false, detail: `'${exchange.acquisition.mode}' requires an identified subject` };
-        }
-        const usable = relevant.find((g) => g.uses < g.maxUses);
-        if (!usable) return { passed: false, detail: "subject holds no usable grant" };
-        if (exchange.acquisition.requiresActivation && usable.state !== "activated") {
-          return { passed: false, detail: "grant has not been activated" };
-        }
-        return { passed: true, detail: `grant ${usable.id} (${usable.uses}/${usable.maxUses} used)` };
-      }
-    }
+    return mode.check({ exchange, context, presentedCodes, grants: relevant });
   }
 
   /**

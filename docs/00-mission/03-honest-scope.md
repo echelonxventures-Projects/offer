@@ -26,6 +26,29 @@ a design that no longer describes what the system does.
 So this platform does not make that claim. It makes a narrower one that it can
 actually keep.
 
+## "Zero hardcoding", precisely
+
+Taken literally the phrase is incoherent: something has to execute, the pipeline
+has to have an order, and a ledger that does not balance is not a ledger. The
+useful version has **three tiers**, distinguished by who must agree to a change:
+
+| Tier | Changed by | Coordination |
+| --- | --- | --- |
+| Deployment | A registry entry or a config value | None |
+| Specification | Editing `spec/`, regenerating vectors | Every conforming implementation |
+| Invariant | Not available | It would be a different system |
+
+27 registries and a config object cover tier one. Tier two is small and
+deliberate — rounding modes, canonical encoding, error codes, the capability
+list. Tier three is four things: a host language exists, the pipeline has an
+order, double entry balances, money is exact integers.
+
+A Phase 3 audit found three places where tier-one variation had been compiled in
+anyway — posting rules, lifecycle routing and acquisition modes — and fixed
+them. The full accounting is in
+[what is fixed](../01-architecture/08-what-is-fixed.md); the audit is
+[ADR 0015](../06-adr/0015-the-hardcoding-audit.md).
+
 ## The claim that is met
 
 **New value-exchange constructs are data, not code.**
@@ -35,6 +58,10 @@ any engine:
 
 | Adding | Mechanism | Demonstrated in |
 | --- | --- | --- |
+| A place for the credit side to post | `posting-rule` | `test/extensibility.test.ts` (escrow) |
+| A way to obtain an offer | `acquisition-mode` | `test/extensibility.test.ts` (token-gated) |
+| A lifecycle state | `lifecycle-transition` | `test/extensibility.test.ts` (legal review) |
+| A chart of accounts | `AccountNaming` strategy | `test/extensibility.test.ts` |
 | A currency, points scheme, resource or entitlement | `economic-unit` | `05-off-world.ts` (Mars credits, scale 4) |
 | A calendar with its own fields | `calendar` | `05-off-world.ts` (sols, no months) |
 | A place, physical or virtual | `spatial-node` | `05-off-world.ts` (Mars, Luna) |

@@ -147,22 +147,43 @@ The boundary — what genuinely cannot be configuration, and why — is written 
 in [what is fixed](../01-architecture/08-what-is-fixed.md) and
 [ADR 0015](../06-adr/0015-the-hardcoding-audit.md).
 
-## Phase 3 — Make it reachable
+## Phase 3 — Make it reachable ✅ **COMPLETE**
 
-**Goal: other systems can use it.**
+**Goal: other systems can use it, safely.**
 
-| Work | Why |
+| Work | Status |
 | --- | --- |
-| HTTP API | One endpoint per capability; the mapping is mechanical |
-| Authentication | Bind `actor` to a verified identity |
-| Authorisation | Per-capability, per the matrix in [security](../07-operations/03-security.md) |
-| Rate limiting | Coupon brute-forcing is the obvious attack |
-| Bigint serialisation | Decide the wire format; `canonicalize()` is one option |
-| OpenAPI schema | Generated from the capability descriptors |
-| Client SDK | Typed, from the same descriptors |
+| HTTP API | ✅ `node:http` only — no Express, no Fastify |
+| **Authentication** | ✅ API keys (hashed, constant-time) and HMAC tokens. Not JWT, deliberately |
+| **Authorisation** | ✅ Roles as a registry, with a separation-of-duties audit |
+| **Rate limiting** | ✅ Two layers: per source pre-auth, per principal post-auth |
+| Bigint serialisation | ✅ The wire codec, already specified and vector-covered |
+| OpenAPI | ✅ Generated from the capability descriptors |
+| Client SDK | Deferred — the generated OpenAPI is the input for one |
 
-**Exit criterion:** an external service integrates using only the published API
-and documentation, without reading the source.
+**Exit criterion: met.** `examples/09-api.ts` runs a real server and shows the
+four things a caller can no longer get away with: calling unauthenticated,
+committing value from a quote-only key, naming itself as somebody else, and
+hammering a value-committing capability.
+
+The security property that matters: **the request body cannot name the actor.**
+`actor` and `tenant` are overwritten from the authenticated principal before a
+capability sees them. A claimed `ceo@acme.example` is recorded as
+`checkout-service`.
+
+Two findings, both from building the example rather than from the unit tests:
+
+- The shipped `finance` role held both `fund` and `pay` — fund a budget, pay
+  yourself from it. The platform's own separation check flagged it, and it was
+  split into `finance.funding` and `finance.treasury`.
+- Audit records had the **wrong actor**: they recorded the shopper rather than
+  the caller, conflating "who did this" with "who benefited". Fixed, with the
+  subject moved into the payload.
+
+Both are in [ADR 0016](../06-adr/0016-identity-at-the-gateway.md).
+
+**Still open:** no TLS in the adapter (terminate in front), no row-level
+authorisation, no key rotation workflow, and the rate limiter is per-instance.
 
 ## Phase 4 — Make it authorable
 

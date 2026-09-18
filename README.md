@@ -17,6 +17,9 @@ CONTEXT → CONDITIONS → ELIGIBILITY → BENEFIT → EXECUTION → SETTLEMENT 
   **Go** implementation that reproduces every one of them.
 - **Operable.** Vendor-neutral telemetry, integrity health checks, alert rules
   that each carry a runbook link, and a scheduler-agnostic maintenance runner.
+- **Authenticated.** A transport-neutral gateway with API keys or HMAC tokens,
+  role-based authorisation, and two layers of rate limiting. The request body
+  cannot name the actor.
 - **Nothing that varies is compiled in.** 27 registries plus configuration, with
   a test that greps the engines for hardcoded dispatch. What genuinely *cannot*
   be configuration is written down rather than glossed over:
@@ -92,6 +95,7 @@ const quote = caps.apply({
 | Platform | Composition root | `src/platform` |
 | Adapters | Storage ports, memory and SQLite implementations | `src/adapters` |
 | Observability | Telemetry, metrics catalogue, health, alerts | `src/observability` |
+| API | Gateway, authentication, authorisation, rate limits, HTTP | `src/api` |
 | Operations | Scheduler-agnostic maintenance jobs | `src/operations` |
 
 ## Worked examples
@@ -108,6 +112,7 @@ Each is a runnable file that prints what it did and why.
 | `06-stacking-conflict.ts` | Conflict groups, exclusivity, and objectives that disagree |
 | `07-durability.ts` | Restart with nothing lost; 20 concurrent claims, 1 admitted |
 | `08-operations.ts` | A day's traffic, then the maintenance pass that catches what broke |
+| `09-api.ts` | A real HTTP server, and the four things it refuses |
 
 ## Two halves
 
@@ -162,12 +167,12 @@ suite and concurrency tests that include a negative control.
 It has never carried production traffic. What is still missing is written down
 rather than glossed over in
 [docs/08-roadmap/02-known-gaps.md](docs/08-roadmap/02-known-gaps.md) — the
-headline items now being **no authentication layer**, no PostgreSQL adapter, and
+headline items now being no PostgreSQL adapter, no TLS in the HTTP adapter, and
 nothing triggering the maintenance runner.
 
 | | |
 | --- | --- |
-| Tests | 316, across 2 storage adapters |
+| Tests | 356, across 2 storage adapters |
 | Conformance vectors | 289, across 2 language implementations |
 | Registries | 27, holding 204 entries |
 | Typecheck | strict, clean |

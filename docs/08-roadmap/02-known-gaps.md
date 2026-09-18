@@ -5,6 +5,20 @@ not the effort to build it.
 
 ---
 
+## Closed in Phase 3
+
+| Was | Now |
+| --- | --- |
+| **No authentication** | API keys (hashed, constant-time) and HMAC tokens, behind a port |
+| **No authorisation** | Roles as a registry, checked per capability and per tenant |
+| **`actor` was a trusted string** | Overridden from the authenticated principal; the body cannot name the actor |
+| **No rate limiting** | Per source before auth, per principal after |
+| No transport | `node:http` adapter over a transport-neutral gateway |
+| No API contract | OpenAPI generated from the capability descriptors |
+| Audit recorded the subject as actor | Records the caller; the subject is in the payload |
+
+Verified by `test/api.test.ts` (41 tests) and `examples/09-api.ts`.
+
 ## Closed in Phase 2
 
 | Was | Now |
@@ -44,11 +58,6 @@ control) and `test/adapter-conformance.test.ts` (22 tests, both adapters).
 
 ## Critical — do not run in production without these
 
-### No authentication or authorisation
-Capabilities accept an `actor` string and trust it. Any caller may invoke any
-capability for any tenant.
-
-**Consequence:** anyone who can reach `redeem` can grant themselves benefits.
 
 ### No PostgreSQL adapter
 SQLite is the only durable adapter. It is genuinely transactional and it proves
@@ -144,6 +153,21 @@ idempotent so it is wasteful rather than dangerous.
 that guarantees single execution. See
 [maintenance](../07-operations/07-maintenance.md).
 
+### No TLS in the HTTP adapter
+Plain `node:http`. Terminate TLS in front of it.
+
+### No row-level authorisation
+A principal that may `publish` may publish anything in its tenant. Roles are
+capability-level only.
+
+### No key rotation workflow
+`MemoryApiKeyStore` issues and revokes. Rotating without downtime needs
+overlapping validity, which a real store should add.
+
+### The rate limiter is per-instance
+With four instances the effective limit is four times the configured one. The
+port is one method; a shared store is the fix.
+
 ### No metrics exporter
 The catalogue makes writing one mechanical — `describeMetrics()` emits name,
 type, unit, help and labels — but no Prometheus or OTel adapter ships.
@@ -192,10 +216,13 @@ control rather than by prose.
 Phase 2 closed the operational gaps: nothing now fails silently, and every
 failure mode in the runbook has a metric, a health check or an alert behind it.
 
-What remains critical is different in kind: **there is no identity layer**, the
-durable adapter is single-writer, and nothing triggers maintenance. None is a
-design flaw — all are unwritten work, and [the roadmap](01-phases.md) sequences
-them.
+Phase 3 closed the identity gap, which was the largest. A caller must now
+authenticate, is authorised per capability and per tenant, is rate limited, and
+cannot name itself as somebody else.
+
+What remains critical is narrower: **the durable adapter is single-writer**, and
+**nothing triggers maintenance**. Both are unwritten work rather than design
+flaws, and [the roadmap](01-phases.md) sequences them.
 
 The other honest limitation is the one the whole list should be read against:
 this is a reference implementation with a conformance suite, not a deployed

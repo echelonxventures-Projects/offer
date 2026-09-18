@@ -11,6 +11,7 @@ const examples = [
   "06-stacking-conflict.ts",
   "07-durability.ts",
   "08-operations.ts",
+  "09-api.ts",
 ];
 
 for (const example of examples) {

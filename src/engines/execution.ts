@@ -39,6 +39,15 @@ import type { Decision } from "./decision.ts";
 export interface ReserveInput {
   readonly decision: Decision;
   readonly context: ResolvedContext;
+  /**
+   * Who performed this, as distinct from who it was for.
+   *
+   * The audit record's `actor` is the caller - a checkout service, an operator -
+   * and the subject goes in the payload. Recording the subject as the actor
+   * conflates "who did this" with "who benefited", which is exactly the
+   * question an investigation needs separated.
+   */
+  readonly actor?: string;
   /** Makes the reservation safely repeatable. Strongly recommended. */
   readonly idempotencyKey?: string;
   readonly metadata?: JsonObject;
@@ -154,7 +163,7 @@ export class ExecutionEngine {
         reality: context.reality,
         kind: "execution.reserved",
         subject: { kind: "execution", id: execution.id },
-        actor: context.subject.id ?? "anonymous",
+        actor: input.actor ?? "anonymous",
         at,
         correlationId: context.correlationId,
         payload: {
@@ -162,6 +171,7 @@ export class ExecutionEngine {
           decisionHash: decision.hash,
           benefits: benefits.value.length,
           payableReduction: decision.payableReduction.minor.toString(),
+          ...(context.subject.id === undefined ? {} : { subjectId: context.subject.id }),
         },
       });
       if (!audited.ok) return audited;
@@ -271,6 +281,7 @@ export class ExecutionEngine {
     executionId: string,
     context: OperationContext,
     payee?: PartyRef,
+    actor?: string,
   ): Promise<Result<CaptureResult>> {
     const at = context.instant.tick.toString();
     const telemetry = this.#deps.telemetry;
@@ -341,10 +352,15 @@ export class ExecutionEngine {
         reality: execution.reality,
         kind: "execution.captured",
         subject: { kind: "execution", id: execution.id },
-        actor: execution.subjectId ?? "system",
+        actor: actor ?? "system",
         at,
         correlationId: context.correlationId,
-        payload: { entries: entries.length, binding: reality.value.effectsAreBinding, transactionId },
+        payload: {
+          entries: entries.length,
+          binding: reality.value.effectsAreBinding,
+          transactionId,
+          ...(execution.subjectId === undefined ? {} : { subjectId: execution.subjectId }),
+        },
       });
       if (!audited.ok) return audited;
 
@@ -364,6 +380,7 @@ export class ExecutionEngine {
     executionId: string,
     context: OperationContext,
     reason = "released before capture",
+    actor?: string,
   ): Promise<Result<Execution>> {
     const at = context.instant.tick.toString();
 
@@ -407,7 +424,7 @@ export class ExecutionEngine {
         reality: execution.reality,
         kind: "execution.released",
         subject: { kind: "execution", id: execution.id },
-        actor: execution.subjectId ?? "system",
+        actor: actor ?? "system",
         at,
         correlationId: context.correlationId,
         payload: { reason },
@@ -426,6 +443,7 @@ export class ExecutionEngine {
     executionId: string,
     context: OperationContext,
     reason: string,
+    actor?: string,
   ): Promise<Result<CaptureResult>> {
     const at = context.instant.tick.toString();
 
@@ -475,7 +493,7 @@ export class ExecutionEngine {
         reality: execution.reality,
         kind: "execution.reversed",
         subject: { kind: "execution", id: execution.id },
-        actor: execution.subjectId ?? "system",
+        actor: actor ?? "system",
         at,
         correlationId: context.correlationId,
         payload: { reason, entries: contra.length },

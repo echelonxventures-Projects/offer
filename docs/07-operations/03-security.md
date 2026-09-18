@@ -4,21 +4,29 @@ What is protected, what is not, and what a deployment must add.
 
 ---
 
-## What is not here
+## What is here now
 
-Stated first, because it matters most:
+Phase 3 closed the largest gap. There **is** an authenticated, authorising,
+rate-limited gateway, and it is the only way to reach a capability over a
+transport. See [running the API](08-api.md) and
+[ADR 0016](../06-adr/0016-identity-at-the-gateway.md).
 
-- **No authentication.** Capabilities take an `actor` string and trust it.
-- **No authorisation.** Any caller may invoke any capability for any tenant.
-- **No rate limiting.**
-- **No encryption at rest or in transit** — there is no transport.
-- **No PII handling policy.** `subject.attributes` accepts anything.
+The single most important property: **the request body cannot name the actor.**
+`actor` and `tenant` are overwritten from the authenticated principal before a
+capability ever sees them, so a caller cannot attribute an action to somebody
+else or reach another tenant's data.
 
-A deployment must put an authenticated, authorising, rate-limited gateway in
-front of the capability layer. The capability descriptors give it something to
-work with: `mutating` and `financial` classify which verbs need the strongest
-controls, and the five financial ones are `fund`, `pay`, `redeem`, `reserve` and
-`settle`.
+## What is still not here
+
+- **No encryption in transit.** The HTTP adapter is plain `node:http`. Terminate
+  TLS in front of it, or wrap it.
+- **No row-level authorisation.** A principal that may `publish` may publish
+  anything in its tenant.
+- **No key rotation workflow.** Issue and revoke exist; overlapping validity does
+  not.
+- **No mTLS or request signing.**
+- **No PII handling policy.** `subject.attributes` accepts anything, and the
+  guidance below is still guidance.
 
 ---
 
@@ -27,12 +35,12 @@ controls, and the five financial ones are `fund`, `pay`, `redeem`, `reserve` and
 | Threat | Control present | Gap |
 | --- | --- | --- |
 | Rule-authored DoS | No regex; depth and node budgets | Nothing bounds how many rules a tenant authors |
-| Coupon brute-forcing | — | **Needs rate limiting at the gateway** |
+| Coupon brute-forcing | Pre-authentication rate limit, per source | Per-instance; a shared store is needed at scale |
 | Over-redemption by racing | Two-phase execution | **Needs atomic counters in the adapter** |
 | Budget exhaustion attack | Funding caps, limits | Depends on the above |
 | Tampering with history | Hash-chained audit | Evidence only; needs external anchoring |
-| Cross-tenant leakage | Tenant scoping on every store call | Not enforced by the type system |
-| Privilege escalation in authoring | Separation-of-duties on approval | No identity to bind it to |
+| Cross-tenant leakage | Tenant taken from the principal, never the body | Not enforced by the type system below the gateway |
+| Privilege escalation in authoring | Separation of duties at the door *and* in governance | Roles are coarse; no row-level rules |
 | Malicious handler code | — | A registered handler runs in-process with full trust |
 
 ---
@@ -64,9 +72,12 @@ checked, not assumed.
 
 ## What a deployment must add
 
-### 1. Authentication and authorisation
+### 1. Authentication and authorisation — **now implemented**
 
-Bind `actor` to a verified identity. Then, at minimum:
+The gateway binds `actor` to a verified identity and overrides the body. The
+shipped roles map roughly onto the matrix below; audit your own with
+`findSeparationOfDutiesIssues()`, which caught the shipped `finance` role
+holding both `fund` and `pay` before it shipped.
 
 | Capability group | Who |
 | --- | --- |
@@ -81,10 +92,13 @@ Bind `actor` to a verified identity. Then, at minimum:
 `redeem` deserves emphasis: a caller who can invoke it directly can grant
 themselves benefits. It belongs behind a checkout service, not on a public API.
 
-### 2. Rate limiting
+### 2. Rate limiting — **now implemented**
 
-Per subject, per code, per IP. Coupon brute-forcing is the obvious attack: codes
-are short and the platform will faithfully validate every attempt.
+Two layers: per source before authentication (the brute-force defence, since
+there is no principal yet) and per principal per capability after it.
+
+The shipped limiter is in-process, so the effective limit is the configured one
+times the instance count. Swap in a shared store; the port is one method.
 
 ### 3. External anchoring of the audit head — **now implemented**
 

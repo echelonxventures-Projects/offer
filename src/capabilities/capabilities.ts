@@ -480,6 +480,7 @@ export class Capabilities {
     const execution = await this.#platform.executions.reserve({
       decision: quote.value.decision,
       context: quote.value.context,
+      actor: request.actor,
       ...(request.idempotencyKey === undefined ? {} : { idempotencyKey: request.idempotencyKey }),
       ...(request.metadata === undefined ? {} : { metadata: request.metadata }),
     });
@@ -497,6 +498,7 @@ export class Capabilities {
       reserved.value.execution.id,
       reserved.value.context,
       request.payee,
+      request.actor,
     );
     if (!captured.ok) return captured;
 
@@ -509,13 +511,28 @@ export class Capabilities {
     });
   }
 
-  async release(request: { context: ContextRequest; executionId: string }): Promise<Result<Execution>> {
+  async release(request: {
+    context: ContextRequest;
+    executionId: string;
+    actor?: string;
+  }): Promise<Result<Execution>> {
     const context = await this.#platform.context.resolve(request.context);
     if (!context.ok) return context;
-    return await this.#platform.executions.release(request.context.tenant, request.executionId, context.value);
+    return await this.#platform.executions.release(
+      request.context.tenant,
+      request.executionId,
+      context.value,
+      "released before capture",
+      request.actor,
+    );
   }
 
-  async reverse(request: { context: ContextRequest; executionId: string; reason: string }): Promise<Result<Execution>> {
+  async reverse(request: {
+    context: ContextRequest;
+    executionId: string;
+    reason: string;
+    actor?: string;
+  }): Promise<Result<Execution>> {
     const context = await this.#platform.context.resolve(request.context);
     if (!context.ok) return context;
     const reversed = await this.#platform.executions.reverse(
@@ -523,6 +540,7 @@ export class Capabilities {
       request.executionId,
       context.value,
       request.reason,
+      request.actor,
     );
     if (!reversed.ok) return reversed;
     return ok(reversed.value.execution);

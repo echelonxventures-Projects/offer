@@ -73,6 +73,7 @@ export class ReservationReaper {
         execution.id,
         { tenant: request.tenant, instant: now.value, correlationId: `reaper:${cutoff}` },
         request.reason ?? "reaped: reservation expired without capture",
+        "maintenance",
       );
       if (outcome.ok) {
         released += 1;

@@ -86,16 +86,41 @@ themselves benefits. It belongs behind a checkout service, not on a public API.
 Per subject, per code, per IP. Coupon brute-forcing is the obvious attack: codes
 are short and the platform will faithfully validate every attempt.
 
-### 3. External anchoring of the audit head
+### 3. External anchoring of the audit head — **now implemented**
 
-Publish the head hash periodically to a store under **different credentials**.
-Without it, an attacker with database access rewrites the chain consistently and
-`verify()` passes. With it, the rewrite is detectable by comparison.
+Verification alone only proves the chain is *internally consistent*, which a
+wholesale rewrite also is. An attacker with database access edits a record,
+re-seals everything after it, and `verify()` passes.
 
+Anchoring closes that. Publish the head hash to a store held under **different
+credentials**, then compare.
+
+```ts
+const platform = new GoipPlatform({ anchor: new FileAuditAnchor(path, fs) });
+
+await platform.auditService.anchor("acme");            // publish the head
+await platform.auditService.reconcileWithAnchor("acme"); // compare
+// CONFLICT: "audit record 41 does not match the anchor; the chain has been rewritten"
 ```
-hourly: read head hash → append (tenant, seq, hash, timestamp) to the anchor store
-audit:  compare the chain's head at seq N against the anchor's record for seq N
-```
+
+The `audit.anchor` and `audit.reconcile` maintenance jobs do both hourly.
+
+**The port is deliberately tiny**, because a real anchor is somebody else's
+system: an append-only bucket with a separate IAM role, a partner's service, a
+notarisation provider. Two implementations ship:
+
+| | Use | Protects against |
+| --- | --- | --- |
+| `MemoryAuditAnchor` | Tests | Nothing — it shares the process it anchors |
+| `FileAuditAnchor` | Single host | The platform's own credentials, if the file is owned by another user and made append-only (`chattr +a`) |
+
+Neither gives the credential separation that makes anchoring genuinely strong,
+and both say so in their own documentation. Point it at a system you do not
+control.
+
+A test proves the property rather than asserting it: it forges a
+self-consistent chain, confirms internal verification passes, and confirms the
+anchor still catches it.
 
 ### 4. Tenant isolation
 

@@ -140,9 +140,17 @@ const stale = executions.filter(
 for (const e of stale) caps.release({ context, executionId: e.id });
 ```
 
-**There is no reaper in this implementation.** A deployment must add one. Until
-then this incident is not a possibility but a certainty. It is the first entry
-in [known gaps](../08-roadmap/02-known-gaps.md).
+The `reservations.sweep` maintenance job does this every five minutes. If
+reservations are accumulating anyway, the job is not running:
+
+```ts
+const report = await platform.maintenance.runDue(tenant, now);
+report.jobs.find((j) => j.job === "reservations.sweep");   // ran? failed? not_due?
+```
+
+The `reservations.stale` alert fires on this, and the `reservations` health
+check reports it with the words *"is the sweep running?"* — because that is
+almost always the answer. See [maintenance](07-maintenance.md).
 
 ---
 
@@ -193,3 +201,41 @@ safe only because it is single-threaded.
 
 Over-redemption is not recoverable after the fact; the benefits have been given.
 The fix is preventing the next one.
+
+---
+
+## 10. A maintenance job keeps failing
+
+A single failure is usually a race — something else released or captured the
+record between the query and the action, which the sweep counts as `skipped`
+rather than failing on. A *persistent* failure is not.
+
+```ts
+const report = await platform.maintenance.runDue(tenant, now);
+report.jobs.filter((j) => j.status === "failed");
+```
+
+| Job failing | Usually means |
+| --- | --- |
+| `reservations.sweep` | The store is rejecting writes, or a release is hitting `ILLEGAL_STATE` repeatedly |
+| `audit.checkpoint` | The chain does not verify — go to §4, this is the real incident |
+| `audit.anchor` | The anchor store is unreachable, or the anchor is ahead of the chain |
+| `audit.reconcile` | **Go to §4 immediately.** A mismatch is a rewrite, not an outage |
+| `health.check` | The store is unreachable |
+
+`audit.reconcile` failing with `CONFLICT` is the most serious signal this
+platform can produce. It means the chain no longer matches a hash published
+elsewhere: history has been altered by someone with database access. Treat it
+exactly as §4, and preserve both the chain and the anchor.
+
+---
+
+## 11. Alerts are firing constantly
+
+If the same alert pages every evaluation with nothing new happening, check that
+the rule uses `input.delta(...)` rather than a cumulative counter. Counters only
+go up; a rule written against the total latches after the first occurrence and
+pages forever.
+
+This was a real bug in the shipped rules, and there is a regression test for it
+— but a locally added rule can reintroduce it.

@@ -25,6 +25,9 @@ import type { EconomicAuthority } from "../universal/economic/authority.ts";
 import type { TemporalAuthority } from "../universal/temporal/authority.ts";
 import type { SpatialAuthority } from "../universal/spatial/authority.ts";
 import type { Reality } from "../universal/reality/reality.ts";
+import type { Telemetry } from "../observability/telemetry.ts";
+import { noopTelemetry } from "../observability/telemetry.ts";
+import { METRICS } from "../observability/metrics.ts";
 import { add, zero } from "../universal/economic/amount.ts";
 import type {
   CartFacet,
@@ -57,6 +60,7 @@ export interface ContextDeps {
   readonly spatial: SpatialAuthority;
   readonly economic: EconomicAuthority;
   readonly realities: Registry<Reality>;
+  readonly telemetry?: Telemetry;
 }
 
 export interface ResolverInput {
@@ -230,6 +234,9 @@ export class ContextResolutionEngine {
   }
 
   async resolve(request: ContextRequest): Promise<Result<ResolvedContext>> {
+    const telemetry = this.#deps.telemetry ?? noopTelemetry;
+    const stopTotal = telemetry.timer(METRICS.contextDuration, { tenant: request.tenant });
+
     const realityKey = request.reality ?? "production";
     const reality = this.#deps.realities.require(realityKey);
     if (!reality.ok) return reality;
@@ -256,8 +263,14 @@ export class ContextResolutionEngine {
         .sort((a, b) => (a.order ?? 100) - (b.order ?? 100) || a.key.localeCompare(b.key));
 
       for (const resolver of staged) {
+        // Timed per resolver, not just in aggregate. A resolver making an
+        // external call is the commonest cause of a latency regression here,
+        // and a single total would hide which one.
+        const stopResolver = telemetry.timer(METRICS.resolverDuration, { resolver: resolver.key });
         const outcome = await resolver.resolve({ request, draft, deps: this.#deps, reality: reality.value });
+        stopResolver();
         if (!outcome.ok) {
+          telemetry.count(METRICS.resolverOutcome, 1, { resolver: resolver.key, outcome: "failed" });
           trace.push({ resolver: resolver.key, outcome: "failed", note: outcome.error.message });
           return fail(outcome.error.code, `context resolver '${resolver.key}': ${outcome.error.message}`, {
             resolver: resolver.key,
@@ -265,6 +278,10 @@ export class ContextResolutionEngine {
             trace,
           });
         }
+        telemetry.count(METRICS.resolverOutcome, 1, {
+          resolver: resolver.key,
+          outcome: outcome.value === null ? "skipped" : "applied",
+        });
         trace.push({
           resolver: resolver.key,
           outcome: outcome.value === null ? "skipped" : "applied",
@@ -274,8 +291,10 @@ export class ContextResolutionEngine {
     }
 
     if (!draft.instant || !draft.temporal || !draft.economic) {
+      stopTotal();
       return fail(ErrorCode.INVALID_REQUEST, "context resolution finished without a complete structural core");
     }
+    stopTotal();
 
     return ok(
       deepFreeze({

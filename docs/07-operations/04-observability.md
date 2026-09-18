@@ -32,6 +32,35 @@ timestamp and subject, which works until two requests arrive in the same second.
 
 ---
 
+## The telemetry port
+
+Four methods, no vendor. `noopTelemetry` is the default, so a deployment that
+collects nothing pays nothing for the calls.
+
+```ts
+const telemetry = new MemoryTelemetry();
+const platform = new GoipPlatform({ telemetry, metricReader: telemetry });
+```
+
+`multiTelemetry(memory, yourExporter)` fans out, which is how you collect in
+memory for health and alerting while shipping to a backend.
+
+An adapter for Prometheus, OTel or StatsD is a short file over this interface.
+See [ADR 0014](../06-adr/0014-observability-as-ports-not-vendors.md) for why
+there is no SDK in the core.
+
+## The catalogue
+
+Metric names are data, in `src/observability/metrics.ts`. Each entry carries its
+kind, unit, labels and what it is *for*.
+
+```ts
+describeMetrics();  // name, type, unit, help, labels - generate your exporter from this
+```
+
+Nine of the twenty-nine are marked `actionable`, meaning an operator should be
+able to alert on them directly. The rest are for diagnosis.
+
 ## Metrics worth having
 
 ### Decision path
@@ -148,15 +177,61 @@ Every step is a field lookup. None requires reading a log line.
 
 ---
 
-## Health check
+## Health
+
+Four checks, each chosen because it is a question somebody would otherwise
+answer by hand at three in the morning.
 
 ```ts
-const settled = caps.settle({ tenant });
-const audit = caps.audit({ tenant, limit: 1 });
-
-healthy = settled.ok && settled.value.balanced && audit.ok && audit.value.verified;
+const report = await platform.health.check("acme");
+// { status: "healthy" | "degraded" | "unhealthy", checks: [...] }
 ```
 
-Cheap enough to run per minute at moderate volume. As the ledger grows, verify
-from a checkpoint rather than from genesis — see
-[persistence](01-persistence.md).
+| Check | Asks | Unhealthy when |
+| --- | --- | --- |
+| `ledger` | Has value been created or destroyed? | The ledger does not net to zero |
+| `audit` | Has stored history been altered? | The chain does not verify |
+| `funding` | Is a campaign about to refuse customers? | A source is exhausted (degraded above 80%) |
+| `reservations` | Is the sweep actually running? | — (degraded when reservations are stale) |
+
+This is an **integrity** check, not a liveness probe. It reads real state and can
+be slow, so run it on a schedule — the `health.check` maintenance job does, every
+minute — and serve the cached result.
+
+As the chain grows, verification resumes from the last checkpoint rather than
+walking from genesis. The `audit.checkpoint` job maintains it.
+
+## Alerting
+
+Rules are registry entries, and each one **must** carry a `runbook` link. An
+alert without a defined response cannot be added, which is the only reliable
+defence against alert fatigue.
+
+```ts
+const firings = platform.alerts.evaluate({ tenant, metrics: telemetry, health });
+// [{ rule, severity: "page" | "warn", message, runbook, data }]
+```
+
+| Rule | Severity |
+| --- | --- |
+| `ledger.unbalanced` | page |
+| `audit.unverified` | page |
+| `rules.broken` | page |
+| `funding.exhausted` | page |
+| `funding.utilisation` | warn |
+| `stacking.greedy` | warn |
+| `reservations.stale` | warn |
+
+`rules.broken` earns its page: it looks like a client error and is not. An
+authored condition that cannot be evaluated means the offer silently delivers
+nothing until somebody fixes it.
+
+### Counter alerts use deltas, not totals
+
+Rules ask `input.delta(metric)` — "what happened since I last looked". Written
+against cumulative totals, one funding refusal at 09:00 would page on every
+evaluation for the rest of the process's life. This was a real bug; there is a
+test that evaluates three times and asserts the quiet interval does not re-page.
+
+The maintenance runner evaluates alerts after every pass and emits each one as a
+telemetry event, so a deployment can forward them without polling.

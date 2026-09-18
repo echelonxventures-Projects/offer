@@ -5,6 +5,20 @@ not the effort to build it.
 
 ---
 
+## Closed in Phase 2
+
+| Was | Now |
+| --- | --- |
+| No metrics or traces | A vendor-neutral telemetry port, 29 catalogued metrics, instrumented across decision, context, eligibility, execution and funding |
+| No health endpoint | Four integrity checks: ledger balance, audit verification, funding headroom, stale reservations |
+| `audit.verify()` O(n) from genesis | Checkpointing; `verify(tenant, fromSeq)` resumes from a stored, verified point |
+| No external audit anchoring | `AuditAnchor` port; a test forges a self-consistent chain and proves the anchor still catches it |
+| No alerting | Seven rules, each with a mandatory runbook link, evaluated on deltas rather than totals |
+| Nothing ran periodically | Five maintenance jobs behind a scheduler-agnostic runner |
+
+Verified by `test/observability.test.ts` (26), `test/maintenance.test.ts` (22)
+and `examples/08-operations.ts`.
+
 ## Closed in Phase 1
 
 Kept here rather than deleted, because a gap list that only ever grows tells you
@@ -44,11 +58,15 @@ the ports, but it is single-writer and its arithmetic columns are 64-bit.
 **Mitigation:** the conformance suite is ready; a Postgres adapter is one entry
 in `test/_adapters.ts` away from being held to the same standard.
 
-### Nothing schedules the reaper
-`platform.reaper.sweep()` exists and is tested. Nothing calls it on a timer.
+### Nothing triggers maintenance
+`platform.maintenance.runDue(tenant, now)` runs every periodic job — the sweep,
+checkpointing, anchoring, reconciliation and health. Nothing calls it on a timer,
+because the platform deliberately does not own one.
 
-**Consequence:** budget still leaks if the deployment forgets. It is now a
-one-line cron rather than unwritten code, but it is not automatic.
+**Consequence:** budget still leaks if the deployment forgets to schedule it.
+It is now one call from any scheduler rather than unwritten code.
+**Fix:** a cron entry, a `setInterval`, or a Kubernetes CronJob. See
+[maintenance](../07-operations/07-maintenance.md).
 
 ## High — will cause an incident
 
@@ -113,6 +131,23 @@ The data is in the ledger and the audit chain. Nothing reads it.
 Upward imports are prevented by review and two grep tests. A
 dependency-cruiser rule would make it structural.
 
+### No distributed tracing
+Metrics and structured events, but no spans. Propagating trace context across
+async boundaries is a real feature, not four methods. `correlationId` threads
+through contexts, decisions and audit records and covers most of what tracing
+would be used for here.
+
+### Maintenance last-run times are in process
+A multi-process deployment runs every job on every instance. The jobs are
+idempotent so it is wasteful rather than dangerous.
+**Fix:** run maintenance on a single instance, take a lease, or use a scheduler
+that guarantees single execution. See
+[maintenance](../07-operations/07-maintenance.md).
+
+### No metrics exporter
+The catalogue makes writing one mechanical — `describeMetrics()` emits name,
+type, unit, help and labels — but no Prometheus or OTel adapter ships.
+
 ### No distribution
 No email, SMS, push or partner feeds. Deliberate scope boundary.
 
@@ -154,9 +189,13 @@ That is now closed. Storage is durable, atomic and conformance-tested against
 two adapters, and the claims are backed by concurrency tests with a negative
 control rather than by prose.
 
-What remains critical is different in kind: **there is no identity layer**, and
-the durable adapter is single-writer. Neither is a design flaw — both are
-unwritten work, and [the roadmap](01-phases.md) sequences them.
+Phase 2 closed the operational gaps: nothing now fails silently, and every
+failure mode in the runbook has a metric, a health check or an alert behind it.
+
+What remains critical is different in kind: **there is no identity layer**, the
+durable adapter is single-writer, and nothing triggers maintenance. None is a
+design flaw — all are unwritten work, and [the roadmap](01-phases.md) sequences
+them.
 
 The other honest limitation is the one the whole list should be read against:
 this is a reference implementation with a conformance suite, not a deployed

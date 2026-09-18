@@ -180,16 +180,35 @@ export interface LedgerStore {
   all(tenant: string): Promise<Result<LedgerEntry[]>>;
 }
 
+/**
+ * A point in the chain that has been verified and recorded, so later
+ * verification can resume rather than re-walking from genesis.
+ */
+export interface AuditCheckpoint {
+  readonly tenant: string;
+  readonly seq: number;
+  readonly hash: string;
+  /** Instant tick, as a string. */
+  readonly at: string;
+}
+
 export interface AuditStore {
   /** Seals the draft into the chain: assigns seq, links previousHash, hashes. */
   append(draft: AuditDraft): Promise<Result<AuditRecord>>;
   head(tenant: string): Promise<Result<string>>;
+  /** Highest sequence number in the chain, or -1 when it is empty. */
+  headSeq(tenant: string): Promise<Result<number>>;
   recent(tenant: string, limit: number): Promise<Result<AuditRecord[]>>;
+  /** One record by sequence number, for checkpointing and anchoring. */
+  at(tenant: string, seq: number): Promise<Result<AuditRecord | undefined>>;
   /**
    * Re-verify the chain. `fromSeq` resumes from a trusted checkpoint, because
    * verifying from genesis stops scaling well before a year of production.
    */
   verify(tenant: string, fromSeq?: number): Promise<Result<{ records: number; head: string }>>;
+
+  saveCheckpoint(checkpoint: AuditCheckpoint): Promise<Result<AuditCheckpoint>>;
+  latestCheckpoint(tenant: string): Promise<Result<AuditCheckpoint | undefined>>;
 }
 
 export interface TouchpointQuery {

@@ -15,6 +15,8 @@ CONTEXT → CONDITIONS → ELIGIBILITY → BENEFIT → EXECUTION → SETTLEMENT 
   budgets are enforced inside the write, proven by concurrency tests.
 - **Language-agnostic contract.** 289 conformance vectors, with an independent
   **Go** implementation that reproduces every one of them.
+- **Operable.** Vendor-neutral telemetry, integrity health checks, alert rules
+  that each carry a runbook link, and a scheduler-agnostic maintenance runner.
 - **Exact money.** Integer minor units and `bigint` throughout. No floats, ever.
 - **Explainable.** Every decision carries the full trace of why it went that way.
 - **Auditable.** Hash-chained records; tampering is detectable and located.
@@ -85,6 +87,8 @@ const quote = caps.apply({
 | Capabilities | The 22-verb public surface | `src/capabilities` |
 | Platform | Composition root | `src/platform` |
 | Adapters | Storage ports, memory and SQLite implementations | `src/adapters` |
+| Observability | Telemetry, metrics catalogue, health, alerts | `src/observability` |
+| Operations | Scheduler-agnostic maintenance jobs | `src/operations` |
 
 ## Worked examples
 
@@ -99,6 +103,7 @@ Each is a runnable file that prints what it did and why.
 | `05-off-world.ts` | A Martian calendar, Mars credits, and no engine changes |
 | `06-stacking-conflict.ts` | Conflict groups, exclusivity, and objectives that disagree |
 | `07-durability.ts` | Restart with nothing lost; 20 concurrent claims, 1 admitted |
+| `08-operations.ts` | A day's traffic, then the maintenance pass that catches what broke |
 
 ## Two halves
 
@@ -140,6 +145,7 @@ The three documents worth reading before anything else:
 | `npm run conformance` | Run the vectors against the reference and the Go implementation |
 | `npm run vectors:generate` | Regenerate the conformance vectors |
 | `npm run docs:registries` | Regenerate the registry reference from the code |
+| `npm run docs:links` | Check every internal link and alert runbook anchor |
 | `npm run docs:check` | Fail if the generated reference is stale |
 | `npm run verify` | Typecheck, test, docs check, and examples together |
 
@@ -153,11 +159,11 @@ It has never carried production traffic. What is still missing is written down
 rather than glossed over in
 [docs/08-roadmap/02-known-gaps.md](docs/08-roadmap/02-known-gaps.md) — the
 headline items now being **no authentication layer**, no PostgreSQL adapter, and
-nothing scheduling the reservation reaper.
+nothing triggering the maintenance runner.
 
 | | |
 | --- | --- |
-| Tests | 253, across 2 storage adapters |
+| Tests | 303, across 2 storage adapters |
 | Conformance vectors | 289, across 2 language implementations |
 | Typecheck | strict, clean |
 | Runtime dependencies | 0 |

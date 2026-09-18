@@ -103,6 +103,7 @@ Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
 | [0011](06-adr/0011-no-read-check-write-in-the-port.md) | No read-check-write in the storage port |
 | [0012](06-adr/0012-sqlite-as-the-reference-durable-adapter.md) | SQLite as the reference durable adapter |
 | [0013](06-adr/0013-conformance-vectors-as-the-portability-contract.md) | Conformance vectors as the portability contract |
+| [0014](06-adr/0014-observability-as-ports-not-vendors.md) | Observability as ports, not vendors |
 
 ## 07 — Operations
 
@@ -114,6 +115,7 @@ Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
 | [04 Observability](07-operations/04-observability.md) | What to log, measure and alert on |
 | [05 Multi-tenancy](07-operations/05-multi-tenancy.md) | Isolation model and tenant overlays |
 | [06 Runbook](07-operations/06-runbook.md) | The incidents you will actually have |
+| [07 Maintenance](07-operations/07-maintenance.md) | What runs periodically, and what breaks if it does not |
 
 ## 08 — Roadmap
 

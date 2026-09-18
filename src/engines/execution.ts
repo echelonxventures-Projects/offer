@@ -33,6 +33,7 @@ import type { LedgerEntry } from "../ledger/ledger.ts";
 import { allocateFunding, postBenefit, reverseEntries } from "../ledger/settlement.ts";
 import type { PlatformStore } from "../adapters/store.ts";
 import type { EngineDeps } from "./deps.ts";
+import { METRICS } from "../observability/metrics.ts";
 import type { Decision } from "./decision.ts";
 
 export interface ReserveInput {
@@ -92,8 +93,10 @@ export class ExecutionEngine {
 
     const at = context.instant.tick.toString();
     const atSeconds = Number(context.instant.tick) / 1000;
+    const telemetry = this.#deps.telemetry;
+    const stop = telemetry.timer(METRICS.reserveDuration, { tenant: context.tenant });
 
-    return this.#deps.store.transaction(async (tx) => {
+    const reserved = await this.#deps.store.transaction(async (tx) => {
       if (input.idempotencyKey) {
         const existing = await tx.executions.byIdempotencyKey(context.tenant, input.idempotencyKey);
         if (!existing.ok) return existing;
@@ -165,6 +168,35 @@ export class ExecutionEngine {
 
       return ok(execution);
     });
+
+    stop();
+    if (reserved.ok) {
+      telemetry.count(METRICS.executionReserved, 1, { tenant: context.tenant });
+    } else if (reserved.error.code === "LIMIT_EXCEEDED") {
+      const limit = typeof reserved.error.details?.limit === "string" ? reserved.error.details.limit : "unknown";
+      telemetry.count(METRICS.limitExceeded, 1, { tenant: context.tenant, limit });
+    } else if (reserved.error.code === "INSUFFICIENT_FUNDS") {
+      // Two paths produce this: the allocator, which names every source it
+      // tried, and tryReserve, which names the one that refused.
+      const details = reserved.error.details ?? {};
+      const listed = Array.isArray(details.sources) ? details.sources[0] : undefined;
+      const source =
+        typeof details.sourceId === "string"
+          ? details.sourceId
+          : typeof listed === "string"
+            ? listed
+            : "unknown";
+      telemetry.count(METRICS.fundingInsufficient, 1, { tenant: context.tenant, source });
+      // Customers are being refused a price they may already have been shown.
+      telemetry.event({
+        name: METRICS.fundingInsufficient,
+        severity: "error",
+        message: `funding source '${source}' cannot cover a benefit; the campaign is refusing customers`,
+        labels: { tenant: context.tenant },
+        data: { ...reserved.error.details },
+      });
+    }
+    return reserved;
   }
 
   /**
@@ -241,8 +273,10 @@ export class ExecutionEngine {
     payee?: PartyRef,
   ): Promise<Result<CaptureResult>> {
     const at = context.instant.tick.toString();
+    const telemetry = this.#deps.telemetry;
+    const stop = telemetry.timer(METRICS.captureDuration, { tenant });
 
-    return this.#deps.store.transaction(async (tx) => {
+    const captured = await this.#deps.store.transaction(async (tx) => {
       const found = await tx.executions.get(tenant, executionId);
       if (!found.ok) return found;
       const execution = found.value;
@@ -314,6 +348,10 @@ export class ExecutionEngine {
 
       return ok({ execution: captured, entries });
     });
+
+    stop();
+    if (captured.ok) telemetry.count(METRICS.executionCaptured, 1, { tenant });
+    return captured;
   }
 
   /* ==================== release ==================== */
@@ -353,6 +391,14 @@ export class ExecutionEngine {
       const released: Execution = { ...execution, state: "released", releasedAt: at };
       const stored = await tx.executions.put(released);
       if (!stored.ok) return stored;
+
+      this.#deps.telemetry.count(METRICS.executionReleased, 1, {
+        tenant,
+        reason: reason.startsWith("reaped") ? "reaped" : "explicit",
+      });
+      if (reason.startsWith("reaped")) {
+        this.#deps.telemetry.count(METRICS.executionReaped, 1, { tenant });
+      }
 
       const audited = await tx.audit.append({
         tenant,
@@ -419,6 +465,8 @@ export class ExecutionEngine {
       const reversed: Execution = { ...execution, state: "reversed", reversedAt: at };
       const stored = await tx.executions.put(reversed);
       if (!stored.ok) return stored;
+
+      this.#deps.telemetry.count(METRICS.executionReversed, 1, { tenant });
 
       const audited = await tx.audit.append({
         tenant,

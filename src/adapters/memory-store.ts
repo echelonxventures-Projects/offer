@@ -28,6 +28,7 @@ import type { Touchpoint } from "../attribution/touchpoint.ts";
 import { Mutex } from "./mutex.ts";
 import { findBreach, findIssuanceBreach, pruneRecent, recentWindowFor } from "./limit-rules.ts";
 import type {
+  AuditCheckpoint,
   AuditStore,
   ConsumeLimitsRequest,
   CounterReadRequest,
@@ -74,6 +75,7 @@ interface State {
   executionsByKey: Map<string, string>;
   ledger: LedgerEntry[];
   audit: Map<string, AuditRecord[]>;
+  checkpoints: Map<string, AuditCheckpoint>;
   touchpoints: Touchpoint[];
 }
 
@@ -87,6 +89,7 @@ function emptyState(): State {
     executionsByKey: new Map(),
     ledger: [],
     audit: new Map(),
+    checkpoints: new Map(),
     touchpoints: [],
   };
 }
@@ -116,6 +119,7 @@ function snapshot(state: State): State {
     executionsByKey: new Map(state.executionsByKey),
     ledger: [...state.ledger],
     audit: new Map([...state.audit].map(([k, records]) => [k, [...records]])),
+    checkpoints: new Map(state.checkpoints),
     touchpoints: [...state.touchpoints],
   };
 }
@@ -501,9 +505,27 @@ class MemAuditStore implements AuditStore {
     return ok(chain.length > 0 ? (chain[chain.length - 1] as AuditRecord).hash : GENESIS_HASH);
   }
 
+  async headSeq(tenant: string): Promise<Result<number>> {
+    const chain = this.s().audit.get(tenant) ?? [];
+    return ok(chain.length - 1);
+  }
+
   async recent(tenant: string, limit: number): Promise<Result<AuditRecord[]>> {
     const chain = this.s().audit.get(tenant) ?? [];
     return ok(chain.slice(Math.max(0, chain.length - limit)));
+  }
+
+  async at(tenant: string, seq: number): Promise<Result<AuditRecord | undefined>> {
+    return ok((this.s().audit.get(tenant) ?? [])[seq]);
+  }
+
+  async saveCheckpoint(checkpoint: AuditCheckpoint): Promise<Result<AuditCheckpoint>> {
+    this.s().checkpoints.set(checkpoint.tenant, checkpoint);
+    return ok(checkpoint);
+  }
+
+  async latestCheckpoint(tenant: string): Promise<Result<AuditCheckpoint | undefined>> {
+    return ok(this.s().checkpoints.get(tenant));
   }
 
   async verify(tenant: string, fromSeq = 0): Promise<Result<{ records: number; head: string }>> {

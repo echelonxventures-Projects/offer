@@ -21,6 +21,7 @@ import type { RuleTraceEntry } from "../rules/ast.ts";
 import { compare, fromDecimal, zero } from "../universal/economic/amount.ts";
 import { findBreach, recentWindowFor } from "../adapters/limit-rules.ts";
 import type { EngineDeps } from "./deps.ts";
+import { METRICS } from "../observability/metrics.ts";
 
 export interface EligibilityCheck {
   /** Stable identifier so consoles and tests can assert on it. */
@@ -171,8 +172,19 @@ export class EligibilityEngine {
       if (!evaluated.ok) {
         // A broken rule is not an ineligible subject. It is an authoring bug,
         // and it must surface as one rather than as a silent non-qualification.
+        // It is emitted at error severity because the offer is now silently
+        // delivering nothing until somebody fixes the condition.
+        this.#deps.telemetry.count(METRICS.ruleError, 1, { tenant: exchange.tenant });
+        this.#deps.telemetry.event({
+          name: METRICS.ruleError,
+          severity: "error",
+          message: `condition on '${exchange.id}' could not be evaluated: ${evaluated.error.message}`,
+          labels: { tenant: exchange.tenant },
+          data: { valueExchangeId: exchange.id, name: exchange.name },
+        });
         return evaluated;
       }
+      this.#deps.telemetry.observe(METRICS.ruleNodes, evaluated.value.nodesEvaluated, { tenant: exchange.tenant });
       ruleTrace = evaluated.value.trace;
       record(
         "conditions",

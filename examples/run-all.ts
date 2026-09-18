@@ -10,6 +10,7 @@ const examples = [
   "05-off-world.ts",
   "06-stacking-conflict.ts",
   "07-durability.ts",
+  "08-operations.ts",
 ];
 
 for (const example of examples) {

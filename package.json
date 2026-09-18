@@ -11,7 +11,10 @@
   },
   "scripts": {
     "test": "node --test \"test/**/*.test.ts\"",
+    "test:concurrency": "node --test test/concurrency.test.ts test/adapter-conformance.test.ts test/reaper.test.ts",
     "typecheck": "tsc --noEmit",
+    "conformance": "npm run vectors:check && cd conformance/go && go run .",
+    "verify": "npm run typecheck && npm test && npm run docs:check && npm run vectors:check && npm run demo > /dev/null && echo 'verify: all checks passed'",
     "demo": "node examples/run-all.ts",
     "example:coupon": "node examples/01-coupon.ts",
     "example:cashback": "node examples/02-cashback.ts",
@@ -19,14 +22,13 @@
     "example:affiliate": "node examples/04-affiliate-settlement.ts",
     "example:offworld": "node examples/05-off-world.ts",
     "example:stacking": "node examples/06-stacking-conflict.ts",
-    "docs:registries": "node tools/generate-registry-reference.ts",
-    "docs:check": "node tools/generate-registry-reference.ts --check",
-    "verify": "npm run typecheck && npm test && npm run docs:check && npm run vectors:check && npm run demo > /dev/null && echo 'verify: all checks passed'",
     "example:durability": "node examples/07-durability.ts",
-    "test:concurrency": "node --test test/concurrency.test.ts test/adapter-conformance.test.ts test/reaper.test.ts",
+    "example:operations": "node examples/08-operations.ts",
     "vectors:generate": "node tools/generate-vectors.ts",
     "vectors:check": "node tools/generate-vectors.ts --check",
-    "conformance": "npm run vectors:check && cd conformance/go && go run ."
+    "docs:registries": "node tools/generate-registry-reference.ts",
+    "docs:links": "node tools/check-docs.ts",
+    "docs:check": "node tools/generate-registry-reference.ts --check && node tools/check-docs.ts"
   },
   "keywords": [
     "offers",

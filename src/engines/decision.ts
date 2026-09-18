@@ -18,6 +18,7 @@ import type { Grant, ValueExchange } from "../model/value-exchange.ts";
 import type { Amount } from "../universal/economic/amount.ts";
 import type { Registry } from "../registry/registry.ts";
 import type { EngineDeps } from "./deps.ts";
+import { METRICS } from "../observability/metrics.ts";
 import type { EligibilityVerdict } from "./eligibility.ts";
 import { EligibilityEngine } from "./eligibility.ts";
 import { BenefitResolutionEngine } from "./benefit-resolution.ts";
@@ -96,6 +97,8 @@ export class DecisionEngine {
 
   async decide(request: DecisionRequest): Promise<Result<Decision>> {
     const { context } = request;
+    const labels = { tenant: context.tenant, reality: context.reality };
+    const stop = this.#deps.telemetry.timer(METRICS.decisionDuration, labels);
 
     const objectiveKey = request.objective ?? DEFAULT_OBJECTIVE;
     const objective = this.#objectives.require(objectiveKey);
@@ -121,7 +124,20 @@ export class DecisionEngine {
 
       if (verdict.value.eligible) {
         eligible.push(exchange);
-      } else if (request.includeRejected !== false) {
+      } else {
+        // Break failures down by check. "Which check is refusing people today"
+        // is the question an operator actually asks, and a single failure
+        // counter cannot answer it.
+        const failed = verdict.value.checks.find((check) => !check.passed);
+        if (failed) {
+          this.#deps.telemetry.count(METRICS.eligibilityFailed, 1, {
+            tenant: context.tenant,
+            check: failed.check,
+          });
+        }
+      }
+
+      if (!verdict.value.eligible && request.includeRejected !== false) {
         rejected.push({
           valueExchangeId: exchange.id,
           name: exchange.name,
@@ -153,6 +169,27 @@ export class DecisionEngine {
       candidatesConsidered: candidates.value.length,
       contextTrace: context.trace,
     };
+
+    stop();
+    const telemetry = this.#deps.telemetry;
+    telemetry.observe(METRICS.decisionCandidates, candidates.value.length, { tenant: context.tenant });
+    telemetry.observe(METRICS.decisionEligible, eligible.length, { tenant: context.tenant });
+    telemetry.observe(METRICS.decisionApplied, outcome.value.best.applied.length, { tenant: context.tenant });
+    telemetry.count(METRICS.decisionSearchMode, 1, { tenant: context.tenant, mode: outcome.value.searchMode });
+    telemetry.observe(METRICS.decisionReduction, Number(outcome.value.best.payableReduction.minor), {
+      tenant: context.tenant,
+      unit: outcome.value.best.payableReduction.unit,
+    });
+
+    if (outcome.value.searchMode === "greedy") {
+      telemetry.event({
+        name: METRICS.decisionSearchMode,
+        severity: "warn",
+        message: `stacking fell back to a greedy search over ${eligible.length} eligible exchanges; the chosen combination may not be optimal`,
+        labels: { tenant: context.tenant },
+        data: { eligible: eligible.length, considered: outcome.value.combinationsConsidered },
+      });
+    }
 
     return ok({ id: this.#deps.ids.next("dec"), ...body, hash: hashValue(body) });
   }

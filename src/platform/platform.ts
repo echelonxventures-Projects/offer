@@ -42,6 +42,12 @@ import { GovernanceEngine, policyRegistry } from "../engines/governance.ts";
 import { RiskEngine, riskSignalRegistry } from "../engines/risk.ts";
 import { DiscoveryEngine } from "../engines/discovery.ts";
 import { ReservationReaper } from "../engines/reaper.ts";
+import { HealthEngine } from "../observability/health.ts";
+import { AlertEngine } from "../observability/alerts.ts";
+import type { MetricReader } from "../observability/alerts.ts";
+import { AuditService } from "../audit/audit-service.ts";
+import type { AuditAnchor } from "../audit/anchor.ts";
+import { MaintenanceRunner } from "../operations/maintenance.ts";
 import { objectiveRegistry } from "../engines/objectives.ts";
 
 import { AttributionEngine, attributionModelRegistry } from "../attribution/attribution.ts";
@@ -50,6 +56,8 @@ import { DEFAULT_PROFILES } from "../profiles/index.ts";
 import type { PlatformStore } from "../adapters/store.ts";
 import { MemoryPlatformStore } from "../adapters/memory-store.ts";
 import { Capabilities } from "../capabilities/capabilities.ts";
+import type { Telemetry } from "../observability/telemetry.ts";
+import { noopTelemetry } from "../observability/telemetry.ts";
 
 export interface PlatformOptions {
   readonly clock?: Clock;
@@ -57,6 +65,21 @@ export interface PlatformOptions {
   readonly store?: PlatformStore;
   /** Extra resolvers appended to the core context pipeline. */
   readonly contextResolvers?: readonly ContextResolver[];
+  /**
+   * Where instrumentation goes. Defaults to a no-op, so a deployment that has
+   * not wired a backend pays nothing for the calls.
+   */
+  readonly telemetry?: Telemetry;
+  /**
+   * External anchor for audit head hashes. Without one, a wholesale rewrite of
+   * the chain is undetectable - see docs/07-operations/03-security.md.
+   */
+  readonly anchor?: AuditAnchor;
+  /**
+   * Where alert rules read metrics from. `MemoryTelemetry` satisfies it; a
+   * production deployment usually points this at the same collector it exports.
+   */
+  readonly metricReader?: MetricReader;
 }
 
 export class GoipPlatform {
@@ -76,8 +99,14 @@ export class GoipPlatform {
   readonly attribution: AttributionEngine;
   /** Operational sweep; run it on a schedule. Not a capability by design. */
   readonly reaper: ReservationReaper;
+  readonly health: HealthEngine;
+  readonly alerts: AlertEngine;
+  readonly auditService: AuditService;
+  /** Everything that needs running periodically. The host owns the timer. */
+  readonly maintenance: MaintenanceRunner;
 
   readonly deps: EngineDeps;
+  readonly telemetry: Telemetry;
   readonly capabilities: Capabilities;
 
   /** Every registry in the deployment, by name. The extension surface. */
@@ -85,6 +114,7 @@ export class GoipPlatform {
 
   constructor(options: PlatformOptions = {}) {
     this.ids = options.ids ?? randomIdFactory();
+    this.telemetry = options.telemetry ?? noopTelemetry;
     this.store = options.store ?? new MemoryPlatformStore();
 
     this.economic = new EconomicAuthority();
@@ -127,6 +157,7 @@ export class GoipPlatform {
       evaluator,
       store: this.store,
       ids: this.ids,
+      telemetry: this.telemetry,
     };
 
     this.context = new ContextResolutionEngine({
@@ -134,6 +165,7 @@ export class GoipPlatform {
       spatial: this.spatial,
       economic: this.economic,
       realities,
+      telemetry: this.telemetry,
     });
     for (const resolver of options.contextResolvers ?? []) {
       this.context.resolvers.register(resolver);
@@ -146,6 +178,21 @@ export class GoipPlatform {
     this.discovery = new DiscoveryEngine(this.deps, this.decisions.eligibility, this.decisions.benefits);
     this.attribution = new AttributionEngine(attributionModels, this.store.touchpoints);
     this.reaper = new ReservationReaper(this.deps, this.executions);
+    this.health = new HealthEngine(this.deps);
+    this.alerts = new AlertEngine();
+    this.auditService = new AuditService(this.store, this.temporal, options.anchor);
+    this.maintenance = new MaintenanceRunner(
+      {
+        reaper: this.reaper,
+        audit: this.auditService,
+        health: this.health,
+        telemetry: this.telemetry,
+      },
+      {
+        alerts: this.alerts,
+        ...(options.metricReader === undefined ? {} : { metrics: options.metricReader }),
+      },
+    );
 
     this.registries = {
       "economic-unit": this.economic.units,
@@ -171,6 +218,8 @@ export class GoipPlatform {
       "attribution-model": attributionModels,
       "domain-profile": profiles,
       "context-resolver": this.context.resolvers,
+      "alert-rule": this.alerts.rules,
+      "maintenance-job": this.maintenance.jobs,
     } as Record<string, Registry<{ key: string; label: string }>>;
 
     this.capabilities = new Capabilities(this);

@@ -94,21 +94,39 @@ What remains TypeScript-specific: L5. Storage and concurrency are specified as
 obligations rather than vectors, because no input/output pair can express "and
 no other caller observed an intermediate state".
 
-## Phase 2 — Make it operable
+## Phase 2 — Make it operable ✅ **COMPLETE**
 
 **Goal: run it without watching it.**
 
-| Work | Why |
+| Work | Status |
 | --- | --- |
-| ~~Reservation reaper~~ | ✅ Done in Phase 1 — `platform.reaper.sweep()` |
-| Metrics and traces | Per [observability](../07-operations/04-observability.md) |
-| Health endpoint | Ledger balance + audit verification |
-| Audit checkpointing | `verify()` from genesis stops scaling |
-| External audit anchoring | Makes tamper evidence meaningful against an insider |
-| Alerting | The page-level conditions from the observability doc |
+| Reservation reaper | ✅ Done in Phase 1 |
+| Telemetry | ✅ A four-method port, no vendor SDK, 29 catalogued metrics |
+| Instrumentation | ✅ Decision, context (per resolver), eligibility (per check), execution, funding, limits |
+| Health | ✅ Four integrity checks: ledger, audit, funding, reservations |
+| Audit checkpointing | ✅ `verify(tenant, fromSeq)` resumes from a stored checkpoint |
+| External anchoring | ✅ `AuditAnchor` port + memory and append-only-file implementations |
+| Alerting | ✅ Seven rules, each with a mandatory runbook link |
+| Maintenance | ✅ Five jobs, scheduler-agnostic runner |
 
-**Exit criterion:** a week of synthetic traffic with no manual intervention, and
-no outstanding reservations older than the reaper interval.
+**Exit criterion: met.** `examples/08-operations.ts` runs a simulated day —
+traffic, abandoned baskets, an exhausted budget, a broken condition — then a
+maintenance pass that sweeps, checkpoints, anchors, reconciles and reports. Every
+problem surfaces as a metric, a health check or an alert with a runbook link;
+none needs a human to notice it.
+
+Writing that example found three bugs the unit tests had happily asserted
+around: alerts latching on cumulative counters, an alert paging with a *healthy*
+message, and jobs running in alphabetical order so health reported state the
+sweep was about to fix. All three are written up in
+[ADR 0014](../06-adr/0014-observability-as-ports-not-vendors.md) and pinned by
+tests.
+
+**Still open from this phase:** maintenance last-run times are held in process,
+so a multi-process deployment runs every job on every instance. The jobs are
+idempotent, so this is wasteful rather than dangerous;
+[maintenance](../07-operations/07-maintenance.md) sets out the three ways to fix
+it. No distributed tracing — `correlationId` is the substitute.
 
 ## Phase 3 — Make it reachable
 

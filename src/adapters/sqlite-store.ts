@@ -37,6 +37,7 @@ import { Mutex } from "./mutex.ts";
 import { findBreach, findIssuanceBreach, recentWindowFor, MAX_RECENT_RETAINED } from "./limit-rules.ts";
 import { SCHEMA } from "./sqlite-schema.ts";
 import type {
+  AuditCheckpoint,
   AuditStore,
   ConsumeLimitsRequest,
   CounterReadRequest,
@@ -749,6 +750,35 @@ class SqliteAuditStore implements AuditStore {
   async head(tenant: string): Promise<Result<string>> {
     const row = one(this.conn, `SELECT hash FROM audit_record WHERE tenant = ? ORDER BY seq DESC LIMIT 1`, tenant);
     return ok(row ? text(row.hash) : GENESIS_HASH);
+  }
+
+  async headSeq(tenant: string): Promise<Result<number>> {
+    const row = one(this.conn, `SELECT COALESCE(MAX(seq), -1) AS n FROM audit_record WHERE tenant = ?`, tenant);
+    return ok(row ? int(row.n) : -1);
+  }
+
+  async at(tenant: string, seq: number): Promise<Result<AuditRecord | undefined>> {
+    const row = one(this.conn, `SELECT document FROM audit_record WHERE tenant = ? AND seq = ?`, tenant, seq);
+    return ok(row ? decode<AuditRecord>(text(row.document)) : undefined);
+  }
+
+  async saveCheckpoint(checkpoint: AuditCheckpoint): Promise<Result<AuditCheckpoint>> {
+    run(
+      this.conn,
+      `INSERT INTO audit_checkpoint (tenant, seq, hash, at) VALUES (?,?,?,?)
+       ON CONFLICT(tenant) DO UPDATE SET seq = excluded.seq, hash = excluded.hash, at = excluded.at`,
+      checkpoint.tenant,
+      checkpoint.seq,
+      checkpoint.hash,
+      checkpoint.at,
+    );
+    return ok(checkpoint);
+  }
+
+  async latestCheckpoint(tenant: string): Promise<Result<AuditCheckpoint | undefined>> {
+    const row = one(this.conn, `SELECT tenant, seq, hash, at FROM audit_checkpoint WHERE tenant = ?`, tenant);
+    if (!row) return ok(undefined);
+    return ok({ tenant: text(row.tenant), seq: int(row.seq), hash: text(row.hash), at: text(row.at) });
   }
 
   async recent(tenant: string, limit: number): Promise<Result<AuditRecord[]>> {

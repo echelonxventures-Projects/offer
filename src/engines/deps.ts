@@ -19,6 +19,7 @@ import type { FundingModel, PartyKind } from "../model/funding.ts";
 import type { RuleEvaluator } from "../rules/evaluator.ts";
 import type { PlatformStore } from "../adapters/store.ts";
 import type { DomainProfile } from "../model/value-exchange.ts";
+import type { Telemetry } from "../observability/telemetry.ts";
 
 export interface EngineDeps {
   readonly temporal: TemporalAuthority;
@@ -34,4 +35,10 @@ export interface EngineDeps {
   readonly evaluator: RuleEvaluator;
   readonly store: PlatformStore;
   readonly ids: IdFactory;
+  /**
+   * Fire-and-forget instrumentation. Never optional at this layer: an engine
+   * that has to check whether telemetry exists ends up not emitting it.
+   * `noopTelemetry` is the zero-cost default.
+   */
+  readonly telemetry: Telemetry;
 }

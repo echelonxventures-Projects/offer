@@ -132,6 +132,15 @@ CREATE TABLE IF NOT EXISTS audit_record (
   PRIMARY KEY (tenant, seq)
 );
 
+-- A verified point in the chain, so verification can resume rather than
+-- re-walking from genesis. One row per tenant; it moves forward only.
+CREATE TABLE IF NOT EXISTS audit_checkpoint (
+  tenant  TEXT NOT NULL PRIMARY KEY,
+  seq     INTEGER NOT NULL,
+  hash    TEXT NOT NULL,
+  at      TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS touchpoint (
   tenant             TEXT NOT NULL,
   id                 TEXT NOT NULL,

@@ -15,6 +15,7 @@ import { Registry as RegistryClass } from "../registry/registry.ts";
 import type { Distribution, Labels, MetricSnapshot } from "./telemetry.ts";
 import { METRICS } from "./metrics.ts";
 import type { HealthReport } from "./health.ts";
+import { compareKeys } from "../kernel/order.ts";
 
 /** What an alert rule may read. `MemoryTelemetry` satisfies this. */
 export interface MetricReader {
@@ -219,7 +220,7 @@ export class AlertEngine {
 
     return firings.sort(
       (a, b) =>
-        (a.severity === b.severity ? 0 : a.severity === "page" ? -1 : 1) || a.rule.localeCompare(b.rule),
+        (a.severity === b.severity ? 0 : a.severity === "page" ? -1 : 1) || compareKeys(a.rule, b.rule),
     );
   }
 

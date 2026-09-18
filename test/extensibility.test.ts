@@ -22,6 +22,7 @@ import { reconcile } from "../src/ledger/payout.ts";
 import { sequentialIdFactory } from "../src/kernel/ids.ts";
 import { fixedClock } from "../src/universal/temporal/authority.ts";
 import { TENANT, TEST_MS, cartContext, funded, publish, publishUnchecked, simpleDraft, unwrap } from "./_helpers.ts";
+import { AUDIT_KINDS } from "../src/audit/audit-log.ts";
 
 const SRC = new URL("../src", import.meta.url).pathname;
 
@@ -322,5 +323,104 @@ describe("guard: no hardcoded dispatch on registry keys", () => {
       }
     }
     assert.deepEqual(offences, []);
+  });
+});
+
+describe("guard: analysis stays downstream of decisions", () => {
+  /**
+   * The incentive-graph document states the rule plainly: never traverse the
+   * graph inside a decision. A decision whose latency and outcome depend on how
+   * much history a subject has cannot be operated or replayed.
+   *
+   * That rule survives only while nothing on the decision path can reach the
+   * analysis layer, so it is enforced structurally rather than by memory.
+   */
+  test("no engine, rule, context resolver or ledger module imports src/intelligence", () => {
+    const watched = ["engines", "rules", "context", "ledger", "model", "universal"];
+    const offences: string[] = [];
+
+    for (const area of watched) {
+      for (const file of sourceFiles(join(SRC, area))) {
+        const code = readFileSync(file, "utf8");
+        if (code.includes("intelligence/")) {
+          offences.push(`${file.replace(SRC, "src")} imports the analysis layer`);
+        }
+      }
+    }
+    assert.deepEqual(offences, [], "analysis reads what decisions produced; it never feeds them");
+  });
+
+  test("the analysis layer never writes", () => {
+    // A projection that can write is a second source of truth waiting to drift.
+    const forbidden = [".put(", ".append(", ".register(", "saveSnapshot", "saveCheckpoint", "tryConsume"];
+    const offences: string[] = [];
+
+    for (const file of sourceFiles(join(SRC, "intelligence"))) {
+      const code = stripComments(readFileSync(file, "utf8"));
+      for (const call of forbidden) {
+        if (code.includes(call)) offences.push(`${file.replace(SRC, "src")}: calls ${call}`);
+      }
+    }
+    assert.deepEqual(offences, [], "analysis is read-only");
+  });
+});
+
+describe("guard: the audit vocabulary is honest", () => {
+  /**
+   * `AUDIT_KINDS` is a published vocabulary. A consumer filtering on a kind the
+   * platform never emits gets an empty result and no indication that it is
+   * asking for something that cannot happen - which is how a monitoring
+   * dashboard ends up confidently reporting zero.
+   *
+   * So every declared kind is either emitted somewhere in `src`, or listed here
+   * as reserved for deployments to emit themselves. Adding a kind means
+   * choosing one of the two, deliberately.
+   */
+  const RESERVED_FOR_DEPLOYMENTS = new Set([
+    // Publication is recorded as a lifecycle transition, which is what it is.
+    "value_exchange.published",
+    // No capability revokes a grant yet; the kind is reserved for when one does.
+    "grant.revoked",
+    // Quotes are not material events, so a decision is recorded when it is
+    // reserved, inside `execution.reserved`. See ADR 0019.
+    "decision.made",
+    // The reaper releases through the ordinary release path; the actor on the
+    // record is what distinguishes a sweep from a customer cancellation.
+    "execution.reaped",
+    // Settlement posts ledger entries, which are their own record.
+    "settlement.posted",
+    // A governance rejection blocks a write, so there is nothing to record
+    // against; the caller gets a typed error instead.
+    "governance.rejected",
+    // Registry changes happen at composition time, before a chain exists.
+    "registry.changed",
+  ]);
+
+  test("every declared audit kind is either emitted or explicitly reserved", () => {
+    const code = sourceFiles(SRC)
+      .filter((file) => !file.endsWith("audit-log.ts"))
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
+
+    const undocumented: string[] = [];
+    for (const kind of AUDIT_KINDS) {
+      const emitted = code.includes(`"${kind}"`);
+      if (!emitted && !RESERVED_FOR_DEPLOYMENTS.has(kind)) {
+        undocumented.push(`${kind} is declared but never emitted, and is not listed as reserved`);
+      }
+    }
+    assert.deepEqual(undocumented, []);
+  });
+
+  test("nothing is reserved that the platform actually emits", () => {
+    // The mirror of the test above: a kind that starts being emitted must come
+    // off the reserved list, or the list becomes folklore.
+    const code = sourceFiles(SRC)
+      .filter((file) => !file.endsWith("audit-log.ts") && !file.endsWith("extensibility.test.ts"))
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
+
+    const stale = [...RESERVED_FOR_DEPLOYMENTS].filter((kind) => code.includes(`kind: "${kind}"`));
+    assert.deepEqual(stale, [], "these are emitted now and should not be listed as reserved");
   });
 });

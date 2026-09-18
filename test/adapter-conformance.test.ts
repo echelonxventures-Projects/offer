@@ -12,6 +12,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { toDecimal } from "../src/universal/economic/amount.ts";
 import { reconcile, verifyLedger } from "../src/ledger/payout.ts";
+import { compareKeys } from "../src/kernel/order.ts";
 import { ADAPTERS } from "./_adapters.ts";
 import { TENANT, TEST_MS, cartContext, funded, publish, simpleDraft, unwrap } from "./_helpers.ts";
 
@@ -152,6 +153,57 @@ for (const adapter of ADAPTERS) {
         "execution.reserved",
         "execution.captured",
       ]);
+      await store.close?.();
+    });
+
+    test("orders mixed-case ids the same way in every adapter", async () => {
+      // Funding source ids are tenant-supplied, so mixed case is ordinary.
+      // SQLite's ORDER BY is byte order; a JS sort using localeCompare is not,
+      // and the two disagree on exactly this input. Test data that is all
+      // lowercase hides it.
+      const store = adapter.create();
+      const p = await funded(TEST_MS, store);
+      for (const sourceId of ["Zebra-fund", "apple-fund", "Apple-fund"]) {
+        unwrap(
+          await p.capabilities.fund({
+            tenant: TENANT, actor: "test", sourceId, label: sourceId,
+            party: { kind: "merchant", id: sourceId }, unit: "USD", budgetDecimal: "10.00",
+          }),
+        );
+      }
+
+      const listed = unwrap(await store.funding.list(TENANT)).map((source) => source.id);
+      const expected = [...listed].sort(compareKeys);
+      assert.deepEqual(listed, expected, "listing order must be codepoint order, not locale order");
+      await store.close?.();
+    });
+
+    test("audit.range pages forward and agrees with recent", async () => {
+      const store = adapter.create();
+      const p = await funded(TEST_MS, store);
+      await publish(p, simpleDraft());
+      unwrap(await p.capabilities.redeem({ context: cartContext(), actor: "t", idempotencyKey: "a-1" }));
+
+      const head = unwrap(await store.audit.headSeq(TENANT));
+      const everything = unwrap(await store.audit.range(TENANT, 0, head + 1));
+
+      // Paging in twos must reconstruct exactly the same chain.
+      const paged = [];
+      for (let from = 0; ; from += 2) {
+        const page = unwrap(await store.audit.range(TENANT, from, 2));
+        if (page.length === 0) break;
+        paged.push(...page);
+      }
+      assert.deepEqual(paged.map((r) => r.seq), everything.map((r) => r.seq));
+      assert.deepEqual(everything.map((r) => r.seq), [0, 1, 2, 3, 4, 5], "oldest first, contiguous");
+
+      // `recent` walks back from the head; the tail of a full range is the same.
+      const recent = unwrap(await store.audit.recent(TENANT, 3));
+      assert.deepEqual(recent.map((r) => r.hash), everything.slice(-3).map((r) => r.hash));
+
+      // Bounds that ask for nothing return nothing rather than erroring.
+      assert.equal(unwrap(await store.audit.range(TENANT, head + 1, 10)).length, 0);
+      assert.equal(unwrap(await store.audit.range(TENANT, 0, 0)).length, 0);
       await store.close?.();
     });
 

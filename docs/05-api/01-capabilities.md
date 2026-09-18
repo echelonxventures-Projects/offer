@@ -72,6 +72,12 @@ discover({ context, profile?, includeIneligible?, limit?, rank? })
 What is available to this subject. Private exchanges are excluded. Each result
 reports its **standalone** value, never a stacked total.
 
+`rank` is a key into the `discovery-ranking` registry — `value` (default),
+`priority`, `name` or `recommended` — and an unknown key is refused rather than
+quietly falling back. A ranking built from weighted features also returns its
+`ranking` explanation on each result. See
+[intelligence](../09-intelligence/01-overview.md).
+
 ### `search`
 
 ```ts

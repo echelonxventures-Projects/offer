@@ -29,6 +29,7 @@ import type { Telemetry } from "../observability/telemetry.ts";
 import { noopTelemetry } from "../observability/telemetry.ts";
 import { METRICS } from "../observability/metrics.ts";
 import { add, zero } from "../universal/economic/amount.ts";
+import { compareKeys } from "../kernel/order.ts";
 import type {
   CartFacet,
   ContextRequest,
@@ -260,7 +261,7 @@ export class ContextResolutionEngine {
       const staged = this.resolvers
         .list()
         .filter((r) => r.stage === stage)
-        .sort((a, b) => (a.order ?? 100) - (b.order ?? 100) || a.key.localeCompare(b.key));
+        .sort((a, b) => (a.order ?? 100) - (b.order ?? 100) || compareKeys(a.key, b.key));
 
       for (const resolver of staged) {
         // Timed per resolver, not just in aggregate. A resolver making an

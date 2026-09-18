@@ -17,6 +17,7 @@ import { assertBalanced, signedMinor } from "./ledger.ts";
 
 export type { AccountPosition } from "./positions.ts";
 import type { AccountPosition } from "./positions.ts";
+import { compareKeys } from "../kernel/order.ts";
 
 /** Net every account in the ledger, per unit. */
 export function reconcile(entries: readonly LedgerEntry[]): AccountPosition[] {
@@ -34,7 +35,7 @@ export function reconcile(entries: readonly LedgerEntry[]): AccountPosition[] {
     positions.set(key, current);
   }
   return [...positions.values()].sort(
-    (a, b) => a.accountId.localeCompare(b.accountId) || a.unit.localeCompare(b.unit),
+    (a, b) => compareKeys(a.accountId, b.accountId) || compareKeys(a.unit, b.unit),
   );
 }
 

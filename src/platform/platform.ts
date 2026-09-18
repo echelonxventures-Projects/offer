@@ -50,12 +50,16 @@ import { AlertEngine } from "../observability/alerts.ts";
 import type { MetricReader } from "../observability/alerts.ts";
 import { AuditService } from "../audit/audit-service.ts";
 import { ReconciliationService } from "../ledger/reconciliation.ts";
+import { GraphProjector } from "../intelligence/graph.ts";
+import { AnomalyEngine, detectorRegistry } from "../intelligence/anomaly.ts";
+import { allocationStrategyRegistry } from "../intelligence/allocation.ts";
 import type { AuditAnchor } from "../audit/anchor.ts";
 import { MaintenanceRunner } from "../operations/maintenance.ts";
 import { PreviewEngine } from "../authoring/preview.ts";
 import { contextSampleRegistry } from "../authoring/samples.ts";
 import { evaluableConditionsPolicy } from "../authoring/policy.ts";
 import { objectiveRegistry } from "../engines/objectives.ts";
+import { rankingFeatureRegistry, rankingRegistry } from "../engines/ranking.ts";
 
 import { AttributionEngine, attributionModelRegistry } from "../attribution/attribution.ts";
 import { DEFAULT_PROFILES } from "../profiles/index.ts";
@@ -69,6 +73,7 @@ import type { DeepPartial, PlatformConfig } from "./config.ts";
 import { resolveConfig } from "./config.ts";
 import type { Telemetry } from "../observability/telemetry.ts";
 import { noopTelemetry } from "../observability/telemetry.ts";
+import { compareKeys } from "../kernel/order.ts";
 
 export interface PlatformOptions {
   readonly clock?: Clock;
@@ -126,6 +131,12 @@ export class GoipPlatform {
   readonly auditService: AuditService;
   /** Snapshot-backed balances; never rescans the whole ledger. */
   readonly reconciliation: ReconciliationService;
+  /**
+   * Analysis. Strictly downstream: nothing here is consulted by a decision,
+   * and the layering guard enforces that no engine imports it.
+   */
+  readonly graph: GraphProjector;
+  readonly anomalies: AnomalyEngine;
   /** Runs an offer against sample contexts before it is published. */
   readonly preview: PreviewEngine;
   /** Everything that needs running periodically. The host owns the timer. */
@@ -163,6 +174,8 @@ export class GoipPlatform {
     const partyKinds = partyKindRegistry();
     const lifecycle = lifecycleRegistry();
     const objectives = objectiveRegistry();
+    const rankingFeatures = rankingFeatureRegistry();
+    const rankings = rankingRegistry(rankingFeatures);
     const policies = policyRegistry();
     const riskSignals = riskSignalRegistry();
     const attributionModels = attributionModelRegistry();
@@ -219,7 +232,7 @@ export class GoipPlatform {
       review: this.config.risk.reviewThreshold,
       block: this.config.risk.blockThreshold,
     });
-    this.discovery = new DiscoveryEngine(this.deps, this.decisions.eligibility, this.decisions.benefits);
+    this.discovery = new DiscoveryEngine(this.deps, this.decisions.eligibility, this.decisions.benefits, rankings, this.config.ranking.scale);
     this.attribution = new AttributionEngine(attributionModels, this.store.touchpoints);
     this.reaper = new ReservationReaper(this.deps, this.executions);
     const samples = contextSampleRegistry();
@@ -239,6 +252,10 @@ export class GoipPlatform {
     this.alerts = new AlertEngine();
     this.auditService = new AuditService(this.store, this.temporal, options.anchor);
     this.reconciliation = new ReconciliationService(this.store);
+    const detectors = detectorRegistry();
+    const allocationStrategies = allocationStrategyRegistry();
+    this.graph = new GraphProjector(this.store);
+    this.anomalies = new AnomalyEngine(this.store, detectors);
     this.maintenance = new MaintenanceRunner(
       {
         reaper: this.reaper,
@@ -275,6 +292,8 @@ export class GoipPlatform {
       "party-kind": partyKinds,
       "lifecycle-transition": lifecycle,
       "decision-objective": objectives,
+      "discovery-ranking": rankings,
+      "ranking-feature": rankingFeatures,
       policy: policies,
       "risk-signal": riskSignals,
       "attribution-model": attributionModels,
@@ -283,6 +302,8 @@ export class GoipPlatform {
       "context-sample": samples,
       "alert-rule": this.alerts.rules,
       "maintenance-job": this.maintenance.jobs,
+      "anomaly-detector": detectors,
+      "allocation-strategy": allocationStrategies,
     } as Record<string, Registry<{ key: string; label: string }>>;
 
     this.capabilities = new Capabilities(this);
@@ -311,7 +332,7 @@ export class GoipPlatform {
   } {
     const registries = Object.entries(this.registries)
       .map(([name, registry]) => ({ name, entries: registry.size, keys: registry.keys() }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => compareKeys(a.name, b.name));
     return { registries, totalEntries: registries.reduce((sum, r) => sum + r.entries, 0) };
   }
 }

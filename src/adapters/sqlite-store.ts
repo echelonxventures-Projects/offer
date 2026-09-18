@@ -37,6 +37,7 @@ import type { Touchpoint } from "../attribution/touchpoint.ts";
 import { Mutex } from "./mutex.ts";
 import { findBreach, findIssuanceBreach, recentWindowFor, MAX_RECENT_RETAINED } from "./limit-rules.ts";
 import { SCHEMA } from "./sqlite-schema.ts";
+import { compareKeys } from "../kernel/order.ts";
 import type {
   AuditCheckpoint,
   LedgerSnapshot,
@@ -839,6 +840,17 @@ class SqliteAuditStore implements AuditStore {
     return ok(rows.map((row) => decode<AuditRecord>(text(row.document))).reverse());
   }
 
+  async range(tenant: string, fromSeq: number, limit: number): Promise<Result<AuditRecord[]>> {
+    const rows = all(
+      this.conn,
+      `SELECT document FROM audit_record WHERE tenant = ? AND seq >= ? ORDER BY seq LIMIT ?`,
+      tenant,
+      Math.max(0, fromSeq),
+      Math.max(0, limit),
+    );
+    return ok(rows.map((row) => decode<AuditRecord>(text(row.document))));
+  }
+
   async verify(tenant: string, fromSeq = 0): Promise<Result<{ records: number; head: string }>> {
     const rows = all(
       this.conn,
@@ -919,7 +931,7 @@ class SqliteTouchpointStore implements TouchpointStore {
         if (since !== null && BigInt(t.at) < since) return false;
         return true;
       })
-      .sort((a, b) => (BigInt(a.at) < BigInt(b.at) ? -1 : BigInt(a.at) > BigInt(b.at) ? 1 : a.id.localeCompare(b.id)));
+      .sort((a, b) => (BigInt(a.at) < BigInt(b.at) ? -1 : BigInt(a.at) > BigInt(b.at) ? 1 : compareKeys(a.id, b.id)));
 
     return ok(query.limit === undefined ? found : found.slice(0, query.limit));
   }

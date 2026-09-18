@@ -109,6 +109,8 @@ Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
 | [0016](06-adr/0016-identity-at-the-gateway.md) | Identity at the gateway, not in the capability |
 | [0017](06-adr/0017-preview-as-a-publish-gate.md) | Preview as a publish gate |
 | [0018](06-adr/0018-snapshots-and-bundle-versions.md) | Snapshots and bundle versions |
+| [0019](06-adr/0019-analysis-is-a-downstream-layer.md) | Analysis is a downstream layer |
+| [0020](06-adr/0020-codepoint-ordering.md) | Codepoint ordering, everywhere |
 
 ## 07 — Operations
 
@@ -125,9 +127,17 @@ Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
 | [09 Authoring](07-operations/09-authoring.md) | Checking an offer before it can hurt anybody |
 | [10 Reconciliation and replay](07-operations/10-reconciliation-and-replay.md) | Balances without rescanning history; re-examining a disputed decision |
 
+
 ## 08 — Roadmap
 
 | Document | Contents |
 | --- | --- |
 | [01 Phases](08-roadmap/01-phases.md) | A sequenced path from here to production |
 | [02 Known gaps](08-roadmap/02-known-gaps.md) | Everything missing, listed honestly |
+
+## 09 — Intelligence
+
+| Document | Contents |
+| --- | --- |
+| [01 Overview](09-intelligence/01-overview.md) | The graph, anomalies, scorecards and allocation — and why none of it touches a decision |
+| [02 Ranking](09-intelligence/02-ranking.md) | Recommendation as a registry |

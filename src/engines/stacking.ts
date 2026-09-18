@@ -26,6 +26,7 @@ import type { Amount } from "../universal/economic/amount.ts";
 import { add, subtract, zero } from "../universal/economic/amount.ts";
 import type { BenefitResolution } from "./benefit-resolution.ts";
 import type { BenefitResolutionEngine } from "./benefit-resolution.ts";
+import { compareKeys } from "../kernel/order.ts";
 
 /**
  * Default boundary between an optimal search and a bounded one.
@@ -111,7 +112,7 @@ function isCompatibleSet(members: readonly ValueExchange[]): { ok: true } | { ok
 
 /** Fixed, documented application order. */
 export function applicationOrder(members: readonly ValueExchange[]): ValueExchange[] {
-  return [...members].sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
+  return [...members].sort((a, b) => b.priority - a.priority || compareKeys(a.id, b.id));
 }
 
 export class StackingEngine {
@@ -193,7 +194,7 @@ export class StackingEngine {
     return ok({
       applied,
       payableReduction,
-      granted: [...grantedByUnit.values()].sort((a, b) => a.unit.localeCompare(b.unit)),
+      granted: [...grantedByUnit.values()].sort((a, b) => compareKeys(a.unit, b.unit)),
       remainingPayable: finalRemaining.value,
     });
   }
@@ -289,7 +290,7 @@ export class StackingEngine {
       scored.push({ exchange, value: score(single.value) });
     }
     scored.sort((a, b) =>
-      a.value === b.value ? a.exchange.id.localeCompare(b.exchange.id) : b.value > a.value ? 1 : -1,
+      a.value === b.value ? compareKeys(a.exchange.id, b.exchange.id) : b.value > a.value ? 1 : -1,
     );
 
     const accepted: ValueExchange[] = [];

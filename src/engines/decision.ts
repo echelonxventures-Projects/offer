@@ -26,6 +26,7 @@ import type { AppliedExchange, ConflictNote } from "./stacking.ts";
 import { StackingEngine } from "./stacking.ts";
 import type { DecisionObjective } from "./objectives.ts";
 import { DEFAULT_OBJECTIVE } from "./objectives.ts";
+import { compareKeys } from "../kernel/order.ts";
 
 export interface DecisionRequest {
   readonly context: ResolvedContext;
@@ -254,7 +255,7 @@ export class DecisionEngine {
       if (!found.ok) return found;
       if (found.value) candidates.set(found.value.id, found.value);
     }
-    return ok([...candidates.values()].sort((a, b) => a.id.localeCompare(b.id)));
+    return ok([...candidates.values()].sort((a, b) => compareKeys(a.id, b.id)));
   }
 
   async #loadGrants(context: ResolvedContext): Promise<Result<Grant[]>> {

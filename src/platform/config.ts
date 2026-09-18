@@ -66,6 +66,18 @@ export interface RiskConfig {
   readonly blockThreshold: number;
 }
 
+/**
+ * Resolution of a ranking feature's score.
+ *
+ * Features return 0..`scale`. It is configuration rather than a constant
+ * because it sets how finely two close offers can be separated, and a
+ * deployment ranking thousands of near-identical items needs more room than
+ * one ranking six.
+ */
+export interface RankingConfig {
+  readonly scale: number;
+}
+
 export interface PlatformConfig {
   readonly rules: RuleLimitsConfig;
   readonly stacking: StackingConfig;
@@ -74,6 +86,7 @@ export interface PlatformConfig {
   readonly health: HealthConfig;
   readonly telemetry: TelemetryConfig;
   readonly risk: RiskConfig;
+  readonly ranking: RankingConfig;
 }
 
 export const DEFAULT_CONFIG: PlatformConfig = {
@@ -84,6 +97,7 @@ export const DEFAULT_CONFIG: PlatformConfig = {
   health: { fundingWarnPercent: 80, staleReservationSeconds: 3_600 },
   telemetry: { maxSamples: 1_024, maxEvents: 512 },
   risk: { reviewThreshold: 50, blockThreshold: 80 },
+  ranking: { scale: 10_000 },
 };
 
 /** Merge a partial override over the defaults, one level deep per section. */
@@ -96,6 +110,7 @@ export function resolveConfig(overrides: DeepPartial<PlatformConfig> = {}): Plat
     health: { ...DEFAULT_CONFIG.health, ...overrides.health },
     telemetry: { ...DEFAULT_CONFIG.telemetry, ...overrides.telemetry },
     risk: { ...DEFAULT_CONFIG.risk, ...overrides.risk },
+    ranking: { ...DEFAULT_CONFIG.ranking, ...overrides.ranking },
   };
 }
 

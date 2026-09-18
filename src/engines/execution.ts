@@ -35,6 +35,7 @@ import type { PlatformStore } from "../adapters/store.ts";
 import type { EngineDeps } from "./deps.ts";
 import { METRICS } from "../observability/metrics.ts";
 import type { Decision } from "./decision.ts";
+import { compareKeys } from "../kernel/order.ts";
 
 export interface ReserveInput {
   readonly decision: Decision;
@@ -172,6 +173,15 @@ export class ExecutionEngine {
           bundle: decision.bundle,
           benefits: benefits.value.length,
           payableReduction: decision.payableReduction.minor.toString(),
+          // Which exchanges actually applied. Recorded because without it the
+          // chain says a reservation happened but not what it was for, and
+          // every "what did this campaign deliver" question becomes a replay.
+          //
+          // Rejections are deliberately not recorded here. They belong to the
+          // quote, which is not a material event, and storing every
+          // non-qualifying candidate on every reservation would multiply audit
+          // volume for something `replayDecision` reconstructs exactly.
+          applied: decision.applied.map((entry) => entry.valueExchangeId),
           ...(context.subject.id === undefined ? {} : { subjectId: context.subject.id }),
         },
       });
@@ -547,5 +557,5 @@ function totalByUnit(amounts: readonly Amount[]): Result<Amount[]> {
     if (!next.ok) return next;
     byUnit.set(amount.unit, next.value);
   }
-  return ok([...byUnit.values()].sort((a, b) => a.unit.localeCompare(b.unit)));
+  return ok([...byUnit.values()].sort((a, b) => compareKeys(a.unit, b.unit)));
 }

@@ -27,6 +27,7 @@ import { GENESIS_HASH, findChainBreak, sealRecord } from "../audit/audit-log.ts"
 import type { Touchpoint } from "../attribution/touchpoint.ts";
 import { Mutex } from "./mutex.ts";
 import { findBreach, findIssuanceBreach, pruneRecent, recentWindowFor } from "./limit-rules.ts";
+import { compareKeys } from "../kernel/order.ts";
 import type {
   AuditCheckpoint,
   LedgerSnapshot,
@@ -159,7 +160,7 @@ class ExchangeStore implements ValueExchangeStore {
           item.scope.realities.includes(query.reality)),
     );
     // Deterministic order; a real adapter needs an index on (tenant, state).
-    return ok(matches.sort((a, b) => a.id.localeCompare(b.id)));
+    return ok(matches.sort((a, b) => compareKeys(a.id, b.id)));
   }
 
   async byCode(tenant: string, code: string): Promise<Result<ValueExchange | undefined>> {
@@ -193,7 +194,7 @@ class MemGrantStore implements GrantStore {
     return ok(
       [...this.s().grants.values()]
         .filter((g) => g.tenant === tenant && g.subjectId === subjectId)
-        .sort((a, b) => a.id.localeCompare(b.id)),
+        .sort((a, b) => compareKeys(a.id, b.id)),
     );
   }
 
@@ -336,7 +337,7 @@ class MemFundingStore implements FundingStore {
     return ok(
       [...this.s().funding.values()]
         .filter((source) => source.tenant === tenant)
-        .sort((a, b) => a.id.localeCompare(b.id)),
+        .sort((a, b) => compareKeys(a.id, b.id)),
     );
   }
 
@@ -558,6 +559,12 @@ class MemAuditStore implements AuditStore {
     return ok((this.s().audit.get(tenant) ?? [])[seq]);
   }
 
+  async range(tenant: string, fromSeq: number, limit: number): Promise<Result<AuditRecord[]>> {
+    const chain = this.s().audit.get(tenant) ?? [];
+    const start = Math.max(0, fromSeq);
+    return ok(chain.slice(start, start + Math.max(0, limit)));
+  }
+
   async saveCheckpoint(checkpoint: AuditCheckpoint): Promise<Result<AuditCheckpoint>> {
     this.s().checkpoints.set(checkpoint.tenant, checkpoint);
     return ok(checkpoint);
@@ -613,7 +620,7 @@ class MemTouchpointStore implements TouchpointStore {
         if (since !== null && BigInt(t.at) < since) return false;
         return true;
       })
-      .sort((a, b) => (BigInt(a.at) < BigInt(b.at) ? -1 : BigInt(a.at) > BigInt(b.at) ? 1 : a.id.localeCompare(b.id)));
+      .sort((a, b) => (BigInt(a.at) < BigInt(b.at) ? -1 : BigInt(a.at) > BigInt(b.at) ? 1 : compareKeys(a.id, b.id)));
     return ok(query.limit === undefined ? found : found.slice(0, query.limit));
   }
 }

@@ -20,6 +20,7 @@ import type { LedgerSnapshot, PlatformStore } from "../adapters/store.ts";
 import type { AccountPosition } from "./positions.ts";
 import { signedMinor } from "./ledger.ts";
 import type { LedgerEntry } from "./ledger.ts";
+import { compareKeys } from "../kernel/order.ts";
 
 /** Entries folded per round trip. Bounds memory regardless of ledger size. */
 export const FOLD_BATCH = 5_000;
@@ -81,7 +82,7 @@ export class ReconciliationService {
 
     const positions = [...running.values()]
       .map(({ position, net }) => ({ ...position, netMinor: net }))
-      .sort((a, b) => a.accountId.localeCompare(b.accountId) || a.unit.localeCompare(b.unit));
+      .sort((a, b) => compareKeys(a.accountId, b.accountId) || compareKeys(a.unit, b.unit));
 
     return ok({ positions, throughSeq: cursor, foldedEntries: folded, fromSnapshotSeq: fromSeq });
   }

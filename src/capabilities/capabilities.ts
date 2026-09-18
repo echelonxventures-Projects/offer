@@ -309,7 +309,8 @@ export class Capabilities {
     profile?: string;
     includeIneligible?: boolean;
     limit?: number;
-    rank?: "value" | "priority" | "name";
+    /** Key into the `discovery-ranking` registry. */
+    rank?: string;
   }): Promise<Result<{ results: DiscoveredExchange[]; context: ResolvedContext }>> {
     const context = await this.#platform.context.resolve(request.context);
     if (!context.ok) return context;

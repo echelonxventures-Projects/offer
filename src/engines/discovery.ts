@@ -15,6 +15,9 @@ import type { Grant, ValueExchange } from "../model/value-exchange.ts";
 import type { Amount } from "../universal/economic/amount.ts";
 import type { EligibilityVerdict } from "./eligibility.ts";
 import type { EligibilityEngine } from "./eligibility.ts";
+import type { DiscoveryRanking, RankingCandidate, RankingExplanation, RankingInput } from "./ranking.ts";
+import type { Registry } from "../registry/registry.ts";
+import { compareKeys } from "../kernel/order.ts";
 import type { BenefitResolutionEngine } from "./benefit-resolution.ts";
 import type { EngineDeps } from "./deps.ts";
 
@@ -26,8 +29,13 @@ export interface DiscoveryQuery {
   /** Include exchanges the subject is not eligible for, with their reasons. */
   readonly includeIneligible?: boolean;
   readonly limit?: number;
-  /** "value" (default) ranks by computed benefit; "priority" by author intent. */
-  readonly rank?: "value" | "priority" | "name";
+  /**
+   * Key into the `discovery-ranking` registry. "value" (default) ranks by
+   * computed benefit; "recommended" blends several features. An unknown key is
+   * an error rather than a silent fallback - quietly ranking by something
+   * other than what was asked for is worse than saying no.
+   */
+  readonly rank?: string;
 }
 
 export interface DiscoveredExchange {
@@ -40,17 +48,29 @@ export interface DiscoveredExchange {
   readonly indicativeValue?: Amount;
   readonly primaryReason?: string;
   readonly verdict: EligibilityVerdict;
+  /** Present when the chosen ranking can show its working. */
+  readonly ranking?: RankingExplanation;
 }
 
 export class DiscoveryEngine {
   readonly #deps: EngineDeps;
   readonly #eligibility: EligibilityEngine;
   readonly #benefits: BenefitResolutionEngine;
+  readonly #rankings: Registry<DiscoveryRanking>;
+  readonly #scale: number;
 
-  constructor(deps: EngineDeps, eligibility: EligibilityEngine, benefits: BenefitResolutionEngine) {
+  constructor(
+    deps: EngineDeps,
+    eligibility: EligibilityEngine,
+    benefits: BenefitResolutionEngine,
+    rankings: Registry<DiscoveryRanking>,
+    scale: number,
+  ) {
     this.#deps = deps;
     this.#eligibility = eligibility;
     this.#benefits = benefits;
+    this.#rankings = rankings;
+    this.#scale = scale;
   }
 
   async discover(query: DiscoveryQuery): Promise<Result<DiscoveredExchange[]>> {
@@ -97,26 +117,53 @@ export class DiscoveryEngine {
       });
     }
 
-    const ranked = this.#rank(results, found.value, query.rank ?? "value");
+    const ranking = this.#rankings.require(query.rank ?? "value");
+    if (!ranking.ok) return ranking;
+
+    const ranked = this.#rank(results, found.value, context, ranking.value);
     return ok(query.limit === undefined ? ranked : ranked.slice(0, query.limit));
   }
 
   #rank(
     results: DiscoveredExchange[],
     exchanges: readonly ValueExchange[],
-    mode: "value" | "priority" | "name",
+    context: ResolvedContext,
+    ranking: DiscoveryRanking,
   ): DiscoveredExchange[] {
-    const priorityOf = (id: string) => exchanges.find((x) => x.id === id)?.priority ?? 0;
-    return [...results].sort((a, b) => {
-      // Eligible items always outrank ineligible ones, whatever the mode.
-      if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
-      if (mode === "name") return a.name.localeCompare(b.name);
-      if (mode === "priority") return priorityOf(b.valueExchangeId) - priorityOf(a.valueExchangeId);
-      const av = a.indicativeValue?.minor ?? 0n;
-      const bv = b.indicativeValue?.minor ?? 0n;
-      if (av !== bv) return bv > av ? 1 : -1;
-      return priorityOf(b.valueExchangeId) - priorityOf(a.valueExchangeId) || a.name.localeCompare(b.name);
+    const byId = new Map(exchanges.map((exchange) => [exchange.id, exchange]));
+    const candidateFor = (result: DiscoveredExchange): RankingCandidate => {
+      const exchange = byId.get(result.valueExchangeId);
+      return {
+        valueExchangeId: result.valueExchangeId,
+        name: result.name,
+        eligible: result.eligible,
+        ...(result.indicativeValue === undefined ? {} : { indicativeValue: result.indicativeValue }),
+        ...(exchange === undefined ? {} : { exchange }),
+      };
+    };
+
+    const cohort = results.map(candidateFor);
+    const inputFor = (result: DiscoveredExchange): RankingInput => ({
+      candidate: candidateFor(result),
+      cohort,
+      context,
+      scale: this.#scale,
     });
+
+    const sorted = [...results].sort((a, b) => {
+      // Eligible items always outrank ineligible ones, whatever the ranking
+      // says. A ranking orders what is on offer; something the subject cannot
+      // have is not on offer, and no weighting should be able to promote it.
+      if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
+      const order = ranking.compare(inputFor(a), inputFor(b));
+      // Ties break on id rather than relying on sort stability, which would
+      // inherit whatever order the store happened to return rows in.
+      return order || compareKeys(a.valueExchangeId, b.valueExchangeId);
+    });
+
+    if (ranking.explain === undefined) return sorted;
+    const explain = ranking.explain.bind(ranking);
+    return sorted.map((result) => ({ ...result, ranking: explain(inputFor(result)) }));
   }
 }
 

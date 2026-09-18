@@ -241,6 +241,16 @@ export interface AuditStore {
   /** One record by sequence number, for checkpointing and anchoring. */
   at(tenant: string, seq: number): Promise<Result<AuditRecord | undefined>>;
   /**
+   * A bounded forward page, oldest first, starting at `fromSeq` inclusive.
+   *
+   * `recent` walks backwards from the head, which is what an operator wants and
+   * the wrong shape for anything that has to read the whole chain: it cannot be
+   * resumed, so the only way to cover everything is one enormous call. This is
+   * the ledger's `entriesSince` for the audit chain, and it exists so analysis
+   * over a long chain is paged rather than loaded.
+   */
+  range(tenant: string, fromSeq: number, limit: number): Promise<Result<AuditRecord[]>>;
+  /**
    * Re-verify the chain. `fromSeq` resumes from a trusted checkpoint, because
    * verifying from genesis stops scaling well before a year of production.
    */

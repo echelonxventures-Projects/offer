@@ -5,6 +5,25 @@ not the effort to build it.
 
 ---
 
+## Closed in Phase 6
+
+| Was | Now |
+| --- | --- |
+| **No graph projection** | `GraphProjector`, bounded and honest about truncation, plus the six named queries |
+| **"Which campaigns never delivered anything" was unanswerable** | `neverDelivered(projection)` — nothing else in the platform notices a campaign that quietly does nothing |
+| **Ranking was a closed union with a `switch` in the engine** | `discovery-ranking` and `ranking-feature` registries |
+| **"Register a learned model as a signal" was a claim** | Scorecards: fitted elsewhere, loaded as data, one contribution per feature |
+| No budget planning | `planAllocation`, advisory, exact to the minor unit, with a reason per line |
+| Alerting only caught thresholds you predicted | Anomaly detection over the chain, on median and MAD |
+| **`localeCompare` in 20 places, several on the decision path** | One codepoint comparator; a conformance test proves both adapters now agree |
+| The chain recorded that a reservation happened, not what for | `execution.reserved` carries the exchanges that applied |
+| The audit chain had no resumable forward scan | `AuditStore.range` |
+
+Verified by `test/intelligence.test.ts` (34), `test/ranking.test.ts` (14),
+`examples/12-intelligence.ts`,
+[ADR 0019](../06-adr/0019-analysis-is-a-downstream-layer.md) and
+[ADR 0020](../06-adr/0020-codepoint-ordering.md).
+
 ## Closed in Phase 5
 
 | Was | Now |
@@ -164,16 +183,33 @@ Fine for hundreds of offers. Beyond that, index externally.
 
 ## Low — nice to have
 
-### No graph projection
-Every edge in [the incentive graph](../01-architecture/06-incentive-graph.md) is
-derivable from stored fields, but no projector is built.
+### No analytics or reporting layer beyond the projection
+Phase 6 added a graph projector, the six named queries and anomaly detection.
+There is still no scheduled reporting, no warehouse export and no dashboard.
+**Consequence:** somebody has to call the projector and read the result.
 
-### No analytics or reporting layer
-The data is in the ledger and the audit chain. Nothing reads it.
+### A projection is a scan
+`graph.project()` reads the audit chain. It is bounded and it reports its cost,
+but it is not cheap and it does not belong behind a per-request endpoint.
+**Workaround:** project periodically, or over a `fromSeq` window.
 
-### No layering enforcement
-Upward imports are prevented by review and two grep tests. A
-dependency-cruiser rule would make it structural.
+### Anomaly detection has no memory
+Each scan is independent, so a finding repeats on every run until the window
+moves past it.
+**Fix:** route findings through the alert engine, which already de-duplicates on
+deltas rather than totals.
+
+### A bundle version does not cover a scorecard's weights
+Registry bundle versions hash registry keys. A scorecard is data loaded by a
+deployment, so changing its weights changes decisions without moving the bundle.
+**Fix:** version the weights file yourself and record it alongside the build id.
+
+### Layering enforcement is partial
+The analysis layer is enforced structurally: a guard test forbids any engine,
+rule, context resolver or ledger module from importing `src/intelligence/`, and
+forbids that layer from writing. The remaining upward imports are prevented by
+review and two grep tests. A dependency-cruiser rule would make all of it
+structural.
 
 ### No distributed tracing
 Metrics and structured events, but no spans. Propagating trace context across
@@ -221,10 +257,15 @@ type, unit, help and labels — but no Prometheus or OTel adapter ships.
 ### No distribution
 No email, SMS, push or partner feeds. Deliberate scope boundary.
 
-### No learned models
-No recommendation, forecasting or generation beyond linear extrapolation.
-`forecast` returns `null` rather than a confident number when there is no
-history.
+### Nothing is trained here
+Phase 6 added scorecards, which **execute** a linear model fitted somewhere
+else, and ranking features that compose into a recommender. There is still no
+training: no gradient descent, no inference over a neural network, nothing that
+should be called learning. `forecast` still returns `null` rather than a
+confident number when there is no history.
+**Deliberate.** Embedding a model runtime would end the zero-dependency,
+zero-build promise and buy an unexplainable score in return. See
+[intelligence](../09-intelligence/01-overview.md).
 
 ### `visibility` is arguably misnamed
 It governs discovery only. `discoverability` would be clearer. Not renamed
@@ -269,6 +310,11 @@ cannot name itself as somebody else.
 Phase 5 closed the two that would have degraded silently: reconciliation no
 longer rescans a table that only grows, and a decision now records the rules it
 was made under, so a dispute can be answered rather than argued.
+
+Phase 6 was the one most likely to undo the others, and the work went into a
+boundary rather than an algorithm. It also caught the oldest defect in the list:
+two storage adapters that had been quietly disagreeing about sort order for
+anything mixed-case, hidden by test fixtures that were all lowercase.
 
 What remains critical is narrower: **the durable adapter is single-writer**, and
 **nothing triggers maintenance**. Both are unwritten work rather than design

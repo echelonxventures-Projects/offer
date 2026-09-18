@@ -91,6 +91,10 @@ with it.
 **"What did this campaign actually cost, and who bore it?"**
 `ValueExchange ← DECIDED ← Decision → EXECUTES → Execution → PAID_FROM → FundingSource → HELD_BY → Party`
 
+**"Which live campaigns have never delivered anything?"**
+`neverDelivered(projection)`. A campaign that quietly does nothing raises no
+errors at all, so nothing else in the platform notices it.
+
 **"Which offers keep getting displaced?"**
 `ValueExchange → DISPLACED_BY → ValueExchange`, aggregated. A campaign that is
 always eligible and never chosen is a campaign that was configured but never
@@ -110,22 +114,36 @@ pre-change safety query, and the reason `funding.sources_exist` is a policy.
 
 ## Building the projection
 
-Everything needed is already in the stores. A projector reads them and emits
-nodes and edges:
+Everything needed is already in the stores, and Phase 6 ships the projector that
+reads them. `GraphProjector` walks the stores and the audit chain and emits the
+nodes and edges above:
 
 ```ts
-function project(store: PlatformStore, tenant: string) {
-  const exchanges  = store.exchanges.find(tenant).value ?? [];
-  const ledger     = store.ledger.all(tenant).value ?? [];
-  const audit      = store.audit.all(tenant);
-  // ... emit nodes and edges per the tables above
-}
+const projection = await platform.graph.project({ tenant, includeLedger: true });
+projection.nodes;                 // per the node table
+projection.edges;                 // per the edge table
+projection.scanned.auditRecords;  // what it cost
+projection.truncated;             // whether history is missing from the result
 ```
 
-No projector ships here — it would be inventing a query interface nobody has
-specified yet. What ships is the guarantee that every edge above is derivable
-from stored fields, which is the part that has to be true at design time. It is
-listed in [known gaps](../08-roadmap/02-known-gaps.md).
+It holds to everything this document argues for. Derived, never stored. Bounded,
+with an explicit record budget, because a projection is a scan and a partial
+graph that looks complete is worse than a refusal. And structurally unable to
+reach a decision: a guard test forbids any engine, rule, context resolver or
+ledger module from importing the analysis layer at all.
+
+Two differences from the tables above, both deliberate:
+
+- **There is no `REJECTED` edge.** Rejections belong to quotes, and a quote is
+  not a material event, so nothing records one. Storing every non-qualifying
+  candidate on every reservation would multiply audit volume for something
+  `replayDecision` reconstructs exactly.
+- **`DECIDED` comes from the reservation record**, which now carries the
+  exchanges that applied. Before Phase 6 the chain said a reservation happened
+  but not what it was for.
+
+See [intelligence](../09-intelligence/01-overview.md) and
+[ADR 0019](../06-adr/0019-analysis-is-a-downstream-layer.md).
 
 ## The rule
 

@@ -25,6 +25,7 @@ import type { AlertEngine, AlertFiring, MetricReader } from "../observability/al
 import type { AuditService } from "../audit/audit-service.ts";
 import type { ReconciliationService } from "../ledger/reconciliation.ts";
 import type { ReservationReaper } from "../engines/reaper.ts";
+import { compareKeys } from "../kernel/order.ts";
 
 export interface MaintenanceConfigView {
   readonly sweepBatchLimit: number;
@@ -264,7 +265,7 @@ export class MaintenanceRunner {
     let failed = 0;
     let health: HealthReport | undefined;
 
-    for (const job of [...this.jobs.list()].sort((a, b) => a.order - b.order || a.key.localeCompare(b.key))) {
+    for (const job of [...this.jobs.list()].sort((a, b) => a.order - b.order || compareKeys(a.key, b.key))) {
       const key = `${tenant}/${job.key}`;
       const last = this.#lastRun.get(key);
       const dueAt = last === undefined ? now.tick : last + BigInt(Math.round(job.intervalSeconds * 1000));

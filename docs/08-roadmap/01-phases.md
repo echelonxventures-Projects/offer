@@ -270,22 +270,46 @@ done rather than claimed. See
 [ADR 0018](../06-adr/0018-snapshots-and-bundle-versions.md) and
 [reconciliation and replay](../07-operations/10-reconciliation-and-replay.md).
 
-## Phase 6 — Make it clever
+## Phase 6 — Make it clever ✅ **COMPLETE**
 
 **Deliberately last.**
 
-| Work | Why |
+| Work | Status |
 | --- | --- |
-| Offer recommendation | Beyond ranking by computed value |
-| Learned risk model | As a signal, with the explanation surface intact |
-| Budget optimisation | Allocation across campaigns |
-| Graph projection | Per [the incentive graph](../01-architecture/06-incentive-graph.md) |
-| Anomaly detection | On decisions and settlement |
+| **Graph projection** | ✅ `GraphProjector`, bounded, plus the six named queries |
+| **Anomaly detection** | ✅ Integer statistics over closed buckets, detectors as a registry |
+| **Learned risk model** | ✅ Scorecards: fitted elsewhere, executed here, explaining every contribution |
+| **Offer recommendation** | ✅ `discovery-ranking` and `ranking-feature` registries |
+| **Budget optimisation** | ✅ `planAllocation`, advisory, exact to the minor unit |
 
-Every one of these is a registry entry or a downstream consumer. None requires
-an engine change — which is why it is safe to leave them until last, and why
-leaving them until last is the right call. A clever platform that cannot balance
-its books is worth less than a dull one that can.
+The prediction held: every one of these was a registry entry or a downstream
+consumer, and no engine changed to accommodate any of them. What the phase
+actually needed was a boundary rather than an algorithm.
+
+The risk in this phase was never that the features are hard. It was that each
+has an obvious implementation that would quietly undo something the earlier
+phases paid for — a recommender reading history on the decision path, a model
+that scores without reasons, an optimiser with write access. So the work went
+into `src/intelligence/`, a layer that may not be imported by any engine, rule,
+context resolver or ledger module, and that may not write. Both rules are guard
+tests rather than intentions.
+
+Two things changed outside it, because the queries could not be honest
+otherwise: `execution.reserved` now records which exchanges applied, and
+`AuditStore` gained `range` for bounded forward scans.
+
+The phase also turned up a determinism defect that had nothing to do with
+intelligence and everything to do with the platform's central claim.
+`localeCompare` was used in twenty places, several on the decision path, and the
+two storage adapters were already disagreeing about ordering for mixed-case ids.
+A conformance test now proves they agree; it failed on the memory adapter before
+the fix. See [ADR 0019](../06-adr/0019-analysis-is-a-downstream-layer.md) and
+[ADR 0020](../06-adr/0020-codepoint-ordering.md).
+
+**What is deliberately still not built:** training. No gradient descent, no
+inference over a neural network, nothing that should be called learning. The
+platform executes a model somebody else fitted, and says so rather than
+describing that as machine learning.
 
 ---
 

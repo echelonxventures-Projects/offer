@@ -12,6 +12,8 @@
  * not an incident in the platform.
  */
 
+import { compareKeys } from "../kernel/order.ts";
+
 export type Labels = Readonly<Record<string, string>>;
 
 export interface TelemetryEvent {
@@ -192,7 +194,7 @@ export class MemoryTelemetry implements Telemetry {
       }
     }
     return out.sort(
-      (a, b) => a.metric.localeCompare(b.metric) || seriesKey("", a.labels).localeCompare(seriesKey("", b.labels)),
+      (a, b) => compareKeys(a.metric, b.metric) || compareKeys(seriesKey("", a.labels), seriesKey("", b.labels)),
     );
   }
 

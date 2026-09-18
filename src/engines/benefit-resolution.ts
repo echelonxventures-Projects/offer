@@ -22,6 +22,7 @@ import type { Amount } from "../universal/economic/amount.ts";
 import { add, fromDecimal, min, zero } from "../universal/economic/amount.ts";
 import { globMatch } from "../rules/compare.ts";
 import type { EngineDeps } from "./deps.ts";
+import { compareKeys } from "../kernel/order.ts";
 
 export interface BenefitResolution {
   readonly valueExchangeId: string;
@@ -151,7 +152,7 @@ export class BenefitResolutionEngine {
       valueExchangeVersion: exchange.version,
       computations,
       payableReduction,
-      granted: [...grantedByUnit.values()].sort((a, b) => a.unit.localeCompare(b.unit)),
+      granted: [...grantedByUnit.values()].sort((a, b) => compareKeys(a.unit, b.unit)),
       rankingValue,
     });
   }

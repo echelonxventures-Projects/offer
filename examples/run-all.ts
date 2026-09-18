@@ -15,6 +15,7 @@ const examples = [
   "10-authoring.ts",
   "11-scale.ts",
   "12-intelligence.ts",
+  "13-postgres.ts",
 ];
 
 for (const example of examples) {

@@ -17,7 +17,7 @@ const at = (ms: number) => instant("earth.unix.ms", BigInt(ms));
 
 /** n redemptions, each writing two ledger entries. */
 async function withLedger(adapterIndex: number, redemptions: number) {
-  const store = ADAPTERS[adapterIndex]!.create();
+  const store = await ADAPTERS[adapterIndex]!.create();
   const platform = await funded(TEST_MS, store);
   await publish(platform, simpleDraft());
 
@@ -94,7 +94,7 @@ for (const [index, adapter] of ADAPTERS.entries()) {
 
       // A fresh service over the same entries with no snapshot must agree. This
       // is the property that makes caching a financial figure safe at all.
-      const fresh = new ReconciliationService(ADAPTERS[index]!.create());
+      const fresh = new ReconciliationService(await ADAPTERS[index]!.create());
       const rebuiltStore = store;
       const rebuilt = new ReconciliationService(rebuiltStore);
       void fresh;
@@ -129,7 +129,7 @@ for (const [index, adapter] of ADAPTERS.entries()) {
     });
 
     test("an empty ledger cannot be snapshotted, and says so", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const reconciliation = new ReconciliationService(store);
       const result = await reconciliation.snapshot(TENANT, at(TEST_MS));
       assert.equal(result.ok, false);
@@ -149,7 +149,7 @@ for (const [index, adapter] of ADAPTERS.entries()) {
     });
 
     test("payout draws on snapshot-backed balances", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const platform = await funded(TEST_MS, store);
       unwrap(
         await platform.capabilities.fund({
@@ -193,7 +193,7 @@ for (const [index, adapter] of ADAPTERS.entries()) {
 
 describe("snapshot safety", () => {
   test("refuses to snapshot a ledger that does not balance", async () => {
-    const store = ADAPTERS[0]!.create();
+    const store = await ADAPTERS[0]!.create();
     const platform = await funded(TEST_MS, store);
     await publish(platform, simpleDraft());
     unwrap(await platform.capabilities.redeem({ context: cartContext(), actor: "t", idempotencyKey: "k" }));
@@ -218,7 +218,7 @@ describe("snapshot safety", () => {
   });
 
   test("an imbalance is reported per unit, with the net", async () => {
-    const store = ADAPTERS[0]!.create();
+    const store = await ADAPTERS[0]!.create();
     const platform = await funded(TEST_MS, store);
     await publish(platform, simpleDraft());
     unwrap(await platform.capabilities.redeem({ context: cartContext(), actor: "t", idempotencyKey: "k" }));
@@ -236,7 +236,7 @@ describe("snapshot safety", () => {
 
 describe("the snapshot maintenance job", () => {
   test("records one, and the next pass has nothing to fold", async () => {
-    const store = ADAPTERS[0]!.create();
+    const store = await ADAPTERS[0]!.create();
     const platform = await funded(TEST_MS, store);
     await publish(platform, simpleDraft());
     unwrap(await platform.capabilities.redeem({ context: cartContext(), actor: "t", idempotencyKey: "k" }));
@@ -250,7 +250,7 @@ describe("the snapshot maintenance job", () => {
   });
 
   test("an empty ledger is not a failure", async () => {
-    const store = ADAPTERS[0]!.create();
+    const store = await ADAPTERS[0]!.create();
     const platform = await funded(TEST_MS, store);
     const report = unwrap(await platform.maintenance.runDue(TENANT, at(TEST_MS)));
     assert.equal(report.failed, 0);

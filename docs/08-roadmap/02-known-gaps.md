@@ -5,6 +5,20 @@ not the effort to build it.
 
 ---
 
+## Closed in Phase 7
+
+| Was | Now |
+| --- | --- |
+| **No PostgreSQL adapter** | `SqlPlatformStore` with a `postgres` dialect, verified against a real server |
+| **Depending on a driver would end zero dependencies** | The driver is a port; a deployment brings its own |
+| SQLite's 64-bit ceiling on a funding source | `NUMERIC(38,0)` on Postgres, keeping atomic reservation |
+| Two SQL adapters would have meant two schemas | One schema, four substituted type names |
+| `rowid` and `MAX(a,b)` were quietly SQLite-only | Portable in both, and the rewrite fixed an ordering ambiguity |
+
+Verified by the conformance and concurrency suites running against Postgres:
+25 concurrent reservations still admit exactly one.
+[ADR 0021](../06-adr/0021-the-driver-is-a-port.md).
+
 ## Closed in Phase 6
 
 | Was | Now |
@@ -105,14 +119,6 @@ control) and `test/adapter-conformance.test.ts` (22 tests, both adapters).
 ## Critical — do not run in production without these
 
 
-### No PostgreSQL adapter
-SQLite is the only durable adapter. It is genuinely transactional and it proves
-the ports, but it is single-writer and its arithmetic columns are 64-bit.
-
-**Consequence:** not suitable for a high-throughput multi-process deployment.
-**Mitigation:** the conformance suite is ready; a Postgres adapter is one entry
-in `test/_adapters.ts` away from being held to the same standard.
-
 ### Nothing triggers maintenance
 `platform.maintenance.runDue(tenant, now)` runs every periodic job — the sweep,
 checkpointing, anchoring, reconciliation and health. Nothing calls it on a timer,
@@ -126,6 +132,30 @@ It is now one call from any scheduler rather than unwritten code.
 ---
 
 ## Medium — real limitations, work around them
+
+### No migration framework
+`SqlPlatformStore.open` runs `CREATE TABLE IF NOT EXISTS`. There is no schema
+version, no upgrade path and no down migration.
+**Consequence:** a future schema change has no mechanism behind it.
+**Workaround:** pass `createSchema: false` and run `schemaStatements(dialect)`
+through the migration tool the deployment already has.
+
+### Two SQLite adapters exist
+`SqlitePlatformStore` (synchronous, original) and `SqlPlatformStore` with the
+`sqlite` dialect do the same job. Both pass conformance, and both are in the
+adapter list so they are held to it.
+**Consequence:** duplication, which is the drift risk this project argues
+against everywhere else.
+**Fix:** retire the synchronous one once the generic store has been exercised
+longer. Deliberately not done in the same change that introduced the generic
+store, because replacing a tested component and proving its replacement in one
+step leaves nothing to compare against.
+
+### The Postgres driver is yours to supply
+Ten lines of wrapper, documented with a working `pg` example. The platform does
+not ship one, because shipping one would mean depending on it.
+**Consequence:** a deployment cannot go to Postgres without writing that
+wrapper. See [SQL adapters](../07-operations/11-sql-adapters.md).
 
 ### A bundle version hashes registry keys, not behaviour
 Change the arithmetic inside a benefit handler without touching its key and the

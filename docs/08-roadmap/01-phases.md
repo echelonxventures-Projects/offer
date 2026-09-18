@@ -313,6 +313,41 @@ describing that as machine learning.
 
 ---
 
+## Phase 7 — Make it deployable ✅ **COMPLETE** (for the database half)
+
+**Goal: close the critical list.**
+
+The roadmap ended at Phase 6, but the gap list did not. Two entries sat under
+"Critical — do not run in production without these", and the larger of them was
+the storage layer.
+
+| Work | Status |
+| --- | --- |
+| **PostgreSQL adapter** | ✅ Verified against a real server: 13 conformance and 5 concurrency tests |
+| **The driver as a port** | ✅ Bring `pg`, `postgres.js` or anything else; zero dependencies preserved |
+| **One store, many dialects** | ✅ `SqlPlatformStore` + `SqlDialect`; one schema, four substituted type names |
+| Money without a 64-bit ceiling | ✅ `NUMERIC(38,0)` on Postgres, without giving up atomic reservation |
+| Nothing triggers maintenance | ❌ Still open |
+| Migrations | ❌ `CREATE TABLE IF NOT EXISTS` only; no versioning |
+
+**Exit criterion: met for the adapter, not for the whole critical list.** The
+platform can now run multi-writer. Nothing still schedules maintenance, and that
+entry stays where it is.
+
+Postgres forced three portability defects into the open that SQLite had been
+quietly accepting, and all three were found by running the suite rather than
+reading the code:
+
+- `ON CONFLICT ... DO UPDATE SET redemptions = redemptions + 1` is ambiguous in
+  Postgres. SQLite guesses. This one broke every transactional path.
+- `rowid` has no portable equivalent, so `counter_recent` gained an explicit
+  `seq` — which also fixed a latent point: undoing "the most recent redemption"
+  by timestamp cannot choose between two in the same second.
+- `MAX(a, b)` is a scalar in SQLite and an aggregate in Postgres.
+
+See [ADR 0021](../06-adr/0021-the-driver-is-a-port.md) and
+[SQL adapters](../07-operations/11-sql-adapters.md).
+
 ## What is not on this roadmap
 
 **Distribution.** Email, SMS, push, partner feeds. The platform decides what a

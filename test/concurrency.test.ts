@@ -24,7 +24,7 @@ const subject = (n: number) => ({
 for (const adapter of ADAPTERS) {
   describe(`${adapter.name}: concurrent redemption`, () => {
     test("a total redemption limit of 1 admits exactly one of 25 concurrent reservations", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft({ limits: { totalRedemptions: 1 } }));
 
@@ -61,7 +61,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("a per-subject limit of 1 admits one reservation per subject, concurrently", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft({ limits: { perSubject: 1 } }));
 
@@ -82,7 +82,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("a budget that covers one benefit funds exactly one of many concurrent reservations", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       // Headroom for a single 10.00 discount and no more.
       unwrap(
@@ -122,7 +122,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("the same idempotency key fired concurrently yields one execution", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft());
 
@@ -143,7 +143,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("a failed reservation leaves no budget held", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       unwrap(
         await p.capabilities.fund({

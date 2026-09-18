@@ -19,7 +19,7 @@ const at = (ms: number) => instant("earth.unix.ms", BigInt(ms));
 for (const adapter of ADAPTERS) {
   describe(`${adapter.name}: reservation reaper`, () => {
     test("releases a stale reservation and gives the budget back", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft({ limits: { totalRedemptions: 1 } }));
 
@@ -51,7 +51,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("leaves reservations younger than the cut-off alone", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft());
       unwrap(await p.capabilities.reserve({ context: cartContext(), actor: "t", idempotencyKey: "fresh" }));
@@ -70,7 +70,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("never touches a captured execution", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft());
       const redeemed = unwrap(
@@ -88,7 +88,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("is bounded per sweep and takes the oldest first", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft());
 
@@ -133,7 +133,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("is idempotent: a second sweep finds nothing", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft());
       unwrap(await p.capabilities.reserve({ context: cartContext(), actor: "t", idempotencyKey: "once" }));
@@ -149,7 +149,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("records the release in the audit chain", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft());
       unwrap(await p.capabilities.reserve({ context: cartContext(), actor: "t", idempotencyKey: "audited" }));

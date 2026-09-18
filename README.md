@@ -34,7 +34,7 @@ CONTEXT → CONDITIONS → ELIGIBILITY → BENEFIT → EXECUTION → SETTLEMENT 
 
 ```bash
 node --version          # needs >= 22.6 (tested on 26)
-npm test                # 475 tests, no install required
+npm test                # 516 tests, no install required
 npm run demo            # all six worked examples
 npm run example:coupon  # one of them
 ```
@@ -117,6 +117,7 @@ Each is a runnable file that prints what it did and why.
 | `10-authoring.ts` | Catching a broken offer before it silently delivers nothing |
 | `11-scale.ts` | Reconciling 100 entries without reading them, and replaying a dispute |
 | `12-intelligence.ts` | The graph, anomalies, a fitted model and a budget plan |
+| `13-postgres.ts` | The same platform on SQLite or PostgreSQL, unchanged |
 
 ## Two halves
 
@@ -172,15 +173,18 @@ a snapshot rather than rescanning a table that only grows; and the analysis
 layer — graph projection, anomaly detection, scorecards, budget planning — is
 structurally unable to reach a decision.
 
+The SQL adapter runs on SQLite with no setup and on PostgreSQL with a ten-line
+driver wrapper, and both are held to the same conformance and concurrency suite.
+
 It has never carried production traffic. What is still missing is written down
 rather than glossed over in
 [docs/08-roadmap/02-known-gaps.md](docs/08-roadmap/02-known-gaps.md) — the
-headline items now being no PostgreSQL adapter, no TLS in the HTTP adapter, and
-nothing triggering the maintenance runner.
+headline items now being nothing triggering the maintenance runner, no TLS in
+the HTTP adapter, and no migration framework.
 
 | | |
 | --- | --- |
-| Tests | 475, across 2 storage adapters |
+| Tests | 516 across 3 adapters, 553 with PostgreSQL |
 | Conformance vectors | 295 assertions + 2 fixtures, across 2 language implementations |
 | Registries | 32, holding 227 entries |
 | Typecheck | strict, clean |

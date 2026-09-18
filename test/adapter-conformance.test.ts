@@ -19,7 +19,7 @@ import { TENANT, TEST_MS, cartContext, funded, publish, simpleDraft, unwrap } fr
 for (const adapter of ADAPTERS) {
   describe(`${adapter.name}: conformance`, () => {
     test("round-trips a value exchange without losing anything", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       const published = await publish(
         p,
@@ -37,7 +37,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("preserves bigint amounts exactly through storage", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       unwrap(
         await p.capabilities.fund({
@@ -57,7 +57,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("finds an exchange by code, case- and space-insensitively", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(
         p,
@@ -71,7 +71,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("runs a full redeem, and the books balance", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft());
 
@@ -92,7 +92,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("release restores both the hold and the limit", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       const exchange = await publish(p, simpleDraft({ limits: { totalRedemptions: 1 } }));
 
@@ -112,7 +112,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("reversal leaves every account flat", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft());
 
@@ -137,7 +137,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("the audit chain verifies and detects nothing amiss", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft());
       unwrap(await p.capabilities.redeem({ context: cartContext(), actor: "t", idempotencyKey: "a-1" }));
@@ -161,7 +161,7 @@ for (const adapter of ADAPTERS) {
       // SQLite's ORDER BY is byte order; a JS sort using localeCompare is not,
       // and the two disagree on exactly this input. Test data that is all
       // lowercase hides it.
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       for (const sourceId of ["Zebra-fund", "apple-fund", "Apple-fund"]) {
         unwrap(
@@ -179,7 +179,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("audit.range pages forward and agrees with recent", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       await publish(p, simpleDraft());
       unwrap(await p.capabilities.redeem({ context: cartContext(), actor: "t", idempotencyKey: "a-1" }));
@@ -208,7 +208,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("grants are issued, found by subject, and consume issuance atomically", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       const exchange = await publish(
         p,
@@ -235,7 +235,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("touchpoints persist and come back oldest first", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       for (const [n, party] of [["c", "creator-a"], ["a", "affiliate-b"]] as const) {
         unwrap(
@@ -257,7 +257,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("a transaction that returns Err changes nothing", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
       const exchange = await publish(p, simpleDraft());
 
@@ -281,7 +281,7 @@ for (const adapter of ADAPTERS) {
     });
 
     test("tenants are isolated, including funding sources", async () => {
-      const store = adapter.create();
+      const store = await adapter.create();
       const p = await funded(TEST_MS, store);
 
       unwrap(

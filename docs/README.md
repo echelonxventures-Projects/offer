@@ -111,6 +111,7 @@ Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
 | [0018](06-adr/0018-snapshots-and-bundle-versions.md) | Snapshots and bundle versions |
 | [0019](06-adr/0019-analysis-is-a-downstream-layer.md) | Analysis is a downstream layer |
 | [0020](06-adr/0020-codepoint-ordering.md) | Codepoint ordering, everywhere |
+| [0021](06-adr/0021-the-driver-is-a-port.md) | The driver is a port |
 
 ## 07 — Operations
 
@@ -126,6 +127,7 @@ Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
 | [08 API](07-operations/08-api.md) | Running the HTTP layer: pipeline, roles, rate limits |
 | [09 Authoring](07-operations/09-authoring.md) | Checking an offer before it can hurt anybody |
 | [10 Reconciliation and replay](07-operations/10-reconciliation-and-replay.md) | Balances without rescanning history; re-examining a disputed decision |
+| [11 SQL adapters](07-operations/11-sql-adapters.md) | One store, every SQL database: dialects, drivers and wiring |
 
 
 ## 08 — Roadmap

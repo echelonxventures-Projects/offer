@@ -32,6 +32,7 @@ export * from "./operations/maintenance.ts";
 export * from "./kernel/order.ts";
 export * from "./adapters/store.ts";
 export * from "./adapters/memory-store.ts";
+export * from "./adapters/sql/index.ts";
 export * from "./profiles/index.ts";
 export * from "./capabilities/index.ts";
 export * from "./platform/config.ts";

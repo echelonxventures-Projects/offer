@@ -28,7 +28,7 @@ const at = (ms: number) => instant("earth.unix.ms", BigInt(ms));
 async function setup(adapterIndex = 0, atMs = TEST_MS) {
   const anchor = new MemoryAuditAnchor();
   const telemetry = new MemoryTelemetry({ stopwatch: fixedStopwatch() });
-  const store = ADAPTERS[adapterIndex]!.create();
+  const store = await ADAPTERS[adapterIndex]!.create();
   const platform = new GoipPlatform({
     clock: fixedClock(BigInt(atMs) * 1_000_000n),
     ids: sequentialIdFactory(),

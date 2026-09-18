@@ -249,3 +249,6 @@ The one thing the suite cannot cover for you, because it needs a real crash:
 - A process kill between the ledger insert and the execution update. Verify by
   hand that recovery leaves a consistent state, and that
   `capabilities.settle()` still reports `balanced: true`.
+
+For the shipped SQL adapter — dialects, the driver port and wiring a real
+driver — see [SQL adapters](11-sql-adapters.md).

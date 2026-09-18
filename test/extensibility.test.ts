@@ -424,3 +424,116 @@ describe("guard: the audit vocabulary is honest", () => {
     assert.deepEqual(stale, [], "these are emitted now and should not be listed as reserved");
   });
 });
+
+describe("guard: the SQL adapter stays portable", () => {
+  /**
+   * Postgres found three SQLite-isms that had been sitting in this adapter
+   * since Phase 1, and it found them by running, not by review. These catch the
+   * next one at the point it is written, because the failure mode is a query
+   * that works perfectly on the database the author happened to have.
+   */
+  /** Source with TypeScript *and* SQL comments removed - the schema documents
+   *  the very constructs this bans, and a guard that cannot tell a comment from
+   *  code teaches people to ignore it. */
+  const sqlSource = () =>
+    sourceFiles(join(SRC, "adapters", "sql"))
+      .filter((file) => !file.endsWith("dialect.ts"))
+      .map((file) => {
+        const withoutTs = stripComments(readFileSync(file, "utf8"));
+        const withoutSql = withoutTs
+          .split("\n")
+          .map((line) => {
+            const comment = line.indexOf("--");
+            return comment === -1 ? line : line.slice(0, comment);
+          })
+          .join("\n");
+        return [file.replace(SRC, "src"), withoutSql] as const;
+      });
+
+  /**
+   * Just the SQL: the contents of every backtick template literal, with `${}`
+   * interpolations removed. An interpolation is TypeScript - the arguments to
+   * `dialect.greatest` are quoted strings, and they are not SQL literals.
+   */
+  const sqlLiterals = (code: string): string[] =>
+    [...code.matchAll(/`([^`]*)`/g)]
+      .map((match) => (match[1] ?? "").replaceAll(/\$\{[^}]*\}/g, "?"))
+      // Only templates that are actually SQL. The file is full of error
+      // messages like `no funding source '?'`, which are not queries.
+      .filter((literal) => /\b(SELECT|INSERT|UPDATE|DELETE)\b/.test(literal));
+
+  test("no SQLite-only syntax outside the dialect", () => {
+    const banned: [RegExp, string][] = [
+      [/\browid\b/i, "rowid has no portable equivalent"],
+      [/LIMIT\s+-1/i, "LIMIT -1 is SQLite spelling"],
+      [/\bAUTOINCREMENT\b/i, "AUTOINCREMENT is SQLite spelling"],
+      [/\bPRAGMA\b/i, "PRAGMA belongs in the dialect's setup"],
+      [/\bIFNULL\s*\(/i, "IFNULL is not portable; COALESCE is"],
+      [/\bGROUP_CONCAT\s*\(/i, "GROUP_CONCAT is spelled differently elsewhere"],
+      // SQLite's INTEGER is 64-bit and Postgres's is 32-bit. A millisecond
+      // epoch overflows the latter, which surfaced as "value out of range"
+      // from inside a reservation sweep. Casts go through dialect.types.
+      [/CAST\s*\([^)]*\bAS\s+INTEGER\s*\)/i, "CAST ... AS INTEGER must use the dialect's integer type"],
+    ];
+
+    const offences: string[] = [];
+    for (const [name, code] of sqlSource()) {
+      for (const [pattern, why] of banned) {
+        if (pattern.test(code)) offences.push(`${name}: ${why}`);
+      }
+    }
+    assert.deepEqual(offences, []);
+  });
+
+  test("scalar MAX goes through the dialect", () => {
+    // MAX(a, b) is a scalar in SQLite and an aggregate in Postgres, which calls
+    // the scalar one GREATEST. Aggregate MAX(x) is fine and must stay allowed.
+    const offences: string[] = [];
+    for (const [name, code] of sqlSource()) {
+      if (/\bMAX\s*\(\s*[^)]+,\s*[^)]+\)/.test(code)) {
+        offences.push(`${name}: two-argument MAX must use dialect.greatest`);
+      }
+    }
+    assert.deepEqual(offences, []);
+  });
+
+  test("an upsert never leaves a column reference unqualified", () => {
+    // `DO UPDATE SET x = x + 1` is ambiguous in Postgres - the bare column
+    // could be the stored row or the proposed one. SQLite guesses; Postgres
+    // refuses. This broke every transactional path the first time Postgres ran.
+    const offences: string[] = [];
+    for (const [name, code] of sqlSource()) {
+      for (const match of code.matchAll(/DO UPDATE SET ([^`,\n]+)/g)) {
+        const assignment = match[1] ?? "";
+        const [target, expression = ""] = assignment.split("=");
+        const column = (target ?? "").trim();
+        // A bare occurrence of the assigned column on the right-hand side, not
+        // qualified by a table name or `excluded.`.
+        if (new RegExp(`(^|[^.\\w])${column}\\b`).test(expression.trim())) {
+          offences.push(`${name}: '${assignment.trim()}' must qualify ${column} with its table`);
+        }
+      }
+    }
+    assert.deepEqual(offences, []);
+  });
+
+  test("every query writes placeholders as ?, and none appears in a string literal", () => {
+    // The session renumbers `?` positionally without parsing SQL, so a literal
+    // question mark inside a quoted string would be rewritten into a parameter
+    // reference. Nothing here contains one; this is what keeps that true.
+    const offences: string[] = [];
+    for (const [name, code] of sqlSource()) {
+      for (const sql of sqlLiterals(code)) {
+        // A quoted SQL string, inside the SQL - not a TypeScript argument that
+        // happens to be single-quoted.
+        for (const quoted of sql.matchAll(/'[^'\n]*'/g)) {
+          if ((quoted[0] ?? "").includes("?")) {
+            offences.push(`${name}: ${quoted[0]} contains a literal ?`);
+          }
+        }
+        if (/\$\d/.test(sql)) offences.push(`${name}: writes a Postgres placeholder directly`);
+      }
+    }
+    assert.deepEqual(offences, []);
+  });
+});

@@ -21,7 +21,7 @@ import { TemporalAuthority } from "../src/universal/temporal/authority.ts";
 import type { PlatformStore } from "../src/adapters/store.ts";
 import type { AuditRecord } from "../src/audit/audit-log.ts";
 import { ADAPTERS } from "./_adapters.ts";
-import { TENANT, TEST_MS, cartContext, publish, simpleDraft, unwrap } from "./_helpers.ts";
+import { TENANT, TEST_MS, cartContext, publish, publishUnchecked, simpleDraft, unwrap } from "./_helpers.ts";
 
 const at = (ms: number) => instant("earth.unix.ms", BigInt(ms));
 
@@ -332,7 +332,7 @@ describe("maintenance runner", () => {
 
   test("surfaces alerts alongside the job results", async () => {
     const { platform, store, telemetry } = await setup(0);
-    const broken = await publish(
+    const broken = await publishUnchecked(
       platform,
       simpleDraft({ conditions: { op: "gt", left: { path: "subject.id" }, right: { literal: 5 } } }),
     );

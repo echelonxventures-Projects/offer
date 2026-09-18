@@ -556,6 +556,161 @@
       }
     },
     {
+      "id": "absent-vs-money-gte",
+      "note": "an absent operand is false, not an error: discovery runs before a basket exists, so cart paths are legitimately missing there",
+      "input": {
+        "rule": {
+          "op": "gte",
+          "left": {
+            "path": "cart.nothing"
+          },
+          "right": {
+            "amount": {
+              "unit": "USD",
+              "decimal": "1.00"
+            }
+          }
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "gte",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "absent-vs-money-lt",
+      "input": {
+        "rule": {
+          "op": "lt",
+          "left": {
+            "path": "cart.nothing"
+          },
+          "right": {
+            "amount": {
+              "unit": "USD",
+              "decimal": "1.00"
+            }
+          }
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "lt",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "absent-vs-number",
+      "input": {
+        "rule": {
+          "op": "gt",
+          "left": {
+            "path": "subject.nope"
+          },
+          "right": {
+            "literal": 5
+          }
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "gt",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "absent-both-sides",
+      "input": {
+        "rule": {
+          "op": "gte",
+          "left": {
+            "path": "a.b"
+          },
+          "right": {
+            "path": "c.d"
+          }
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "gte",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "absent-between",
+      "input": {
+        "rule": {
+          "op": "between",
+          "value": {
+            "path": "cart.nothing"
+          },
+          "low": {
+            "literal": 1
+          },
+          "high": {
+            "literal": 9
+          }
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "between",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "absent-still-equals",
+      "note": "a missing path is NOT equal to an explicit null: absent and null are different states, and conflating them hides typos",
+      "input": {
+        "rule": {
+          "op": "eq",
+          "left": {
+            "path": "cart.nothing"
+          },
+          "right": {
+            "literal": null
+          }
+        }
+      },
+      "expect": {
+        "satisfied": false,
+        "trace": [
+          {
+            "op": "eq",
+            "result": false,
+            "depth": 0
+          }
+        ]
+      }
+    },
+    {
       "id": "in",
       "input": {
         "rule": {

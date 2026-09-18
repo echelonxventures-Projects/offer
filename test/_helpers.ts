@@ -56,6 +56,25 @@ export async function publish(p: GoipPlatform, draft: ValueExchangeDraft): Promi
   );
 }
 
+/**
+ * Put an offer live without passing the governance gate.
+ *
+ * Needed because the `rules.evaluable` policy now refuses to publish an offer
+ * whose condition cannot be evaluated - which is the point of it - and several
+ * tests need exactly such an offer live in order to exercise the runtime path.
+ *
+ * This is not only a test affordance. It models the real case the runtime
+ * handling exists for: an offer that was valid when it was published and broke
+ * afterwards, because a registry entry was removed or a context shape changed
+ * underneath it. The gate cannot catch that; the runtime has to.
+ */
+export async function publishUnchecked(p: GoipPlatform, draft: ValueExchangeDraft): Promise<ValueExchange> {
+  const created = unwrap(await p.capabilities.create({ tenant: TENANT, actor: "author", draft }));
+  const live: ValueExchange = { ...created, state: "active" };
+  unwrap(await p.store.exchanges.put(live));
+  return live;
+}
+
 export const usd = (minor: bigint): Amount => ({ unit: "USD", minor, scale: 2 });
 
 /** A basket of two lines totalling 100.00 USD. */

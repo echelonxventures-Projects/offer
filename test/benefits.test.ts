@@ -6,11 +6,13 @@ import assert from "node:assert/strict";
 import { BenefitResolutionEngine, selectLines } from "../src/engines/benefit-resolution.ts";
 import { toDecimal } from "../src/universal/economic/amount.ts";
 import type { BenefitSpec } from "../src/model/benefit.ts";
-import { platform, cartContext, simpleDraft, funded, publish, TENANT, unwrap, usd } from "./_helpers.ts";
+import { TENANT, cartContext, funded, platform, publish, publishUnchecked, simpleDraft, unwrap, usd } from "./_helpers.ts";
 
+// Publishes without the governance gate: this harness exercises the resolution
+// engine directly, including specs that preview would (correctly) refuse.
 async function resolveWith(benefits: BenefitSpec[], contextOver = {}) {
   const p = await funded();
-  const exchange = await publish(p, simpleDraft({ benefits }));
+  const exchange = await publishUnchecked(p, simpleDraft({ benefits }));
   const context = unwrap(await p.context.resolve(cartContext(contextOver)));
   const engine = new BenefitResolutionEngine(p.deps);
   return { p, context, engine, resolve: () => engine.resolve({ exchange, context }) };

@@ -21,7 +21,7 @@ import { toDecimal } from "../src/universal/economic/amount.ts";
 import { reconcile } from "../src/ledger/payout.ts";
 import { sequentialIdFactory } from "../src/kernel/ids.ts";
 import { fixedClock } from "../src/universal/temporal/authority.ts";
-import { TENANT, TEST_MS, cartContext, funded, publish, simpleDraft, unwrap } from "./_helpers.ts";
+import { TENANT, TEST_MS, cartContext, funded, publish, publishUnchecked, simpleDraft, unwrap } from "./_helpers.ts";
 
 const SRC = new URL("../src", import.meta.url).pathname;
 
@@ -267,7 +267,7 @@ describe("tuning is configuration, not constants", () => {
         party: { kind: "merchant", id: "m1" }, unit: "USD", budgetDecimal: "100.00",
       }),
     );
-    await publish(
+    await publishUnchecked(
       platform,
       simpleDraft({
         conditions: { op: "all", of: [{ op: "always" }, { op: "always" }, { op: "always" }, { op: "always" }] },

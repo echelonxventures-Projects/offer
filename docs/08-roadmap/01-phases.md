@@ -185,22 +185,47 @@ Both are in [ADR 0016](../06-adr/0016-identity-at-the-gateway.md).
 **Still open:** no TLS in the adapter (terminate in front), no row-level
 authorisation, no key rotation workflow, and the rate limiter is per-instance.
 
-## Phase 4 — Make it authorable
+## Phase 4 — Make authoring safe ✅ **COMPLETE** (backend)
 
-**Goal: a campaign manager does not need an engineer.**
+**Goal: a broken offer cannot reach production.**
 
-| Work | Why |
+| Work | Status |
 | --- | --- |
-| Authoring console | Build a `ValueExchange` without writing JSON |
-| Rule builder | Visual conditions, backed by the operator registry |
-| **Rule preview** | Evaluate against a sample context before publishing — closes the `RULE_ERROR` gap |
-| Approval workflow | Surface the separation-of-duties gate |
-| Simulation UI | `simulate` against replayed traffic |
-| Budget dashboard | `forecast` output, per source |
+| **Rule preview** | ✅ Offers run against sample contexts before publication |
+| Publish gate | ✅ `rules.evaluable` policy: an unevaluable condition blocks publish |
+| Draft validation | ✅ `validate` checks a draft that was never saved |
+| Sample contexts | ✅ A registry; replace the generic ones with your own traffic |
+| Explanations | ✅ Pure renderers for decisions, rejections and previews |
+| Behavioural diff | ✅ `compareVersions` classifies changes by effect on exposure |
+| Authoring console | ❌ **Deliberately not built** |
+| Visual rule builder | ❌ **Deliberately not built** |
+| Simulation UI | ❌ **Deliberately not built** |
+| Budget dashboard | ❌ **Deliberately not built** |
 
-The rule preview is the highest-value item here. It converts the single worst
-production failure mode — a broken condition silently delivering nothing — into
-a validation error at authoring time.
+**Exit criterion: met** for the part that carries the risk. The highest-value
+item was rule preview, and it closes the worst failure mode this platform has:
+an offer published with an unevaluable condition applies to nobody and *nothing
+errors visibly*. It is now a refused publish.
+
+**On the four UI items.** They are a client, and bundling one would mean
+choosing a framework, a build step and a design system — contradicting the
+agnosticism the rest of the system pays for, and producing something most
+deployments would replace. What a console needs now exists: `validate` with
+preview on an unsaved draft, `compareVersions`, the explanation renderers, and a
+generated OpenAPI document. The UI is downstream work, and it is listed as not
+done rather than claimed.
+
+Two changes this phase forced, both improvements beyond authoring:
+
+- **An absent operand is no longer an error.** Preview caught that a single
+  offer with a cart-based condition failed the *entire discovery response*,
+  because `cart.subtotal` is undefined before a basket exists. A missing path is
+  now false; a wrong-typed value is still an error. A specification change: six
+  vectors added, Go updated, and the conformance suite caught the divergence.
+- **Failed conditions name the predicate that decided.** "4 node(s) evaluated"
+  became `'gte' was not satisfied: 0 vs 1`.
+
+Both are in [ADR 0017](../06-adr/0017-preview-as-a-publish-gate.md).
 
 ## Phase 5 — Make it scale
 

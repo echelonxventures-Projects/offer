@@ -67,7 +67,7 @@ row("state", exchange.state);
 
 /* 3. Governance reviews it before it can go live. */
 section("govern");
-const review = must(await caps.validate({ tenant: TENANT, valueExchangeId: exchange.id }), "validate");
+const { report: review } = must(await caps.validate({ tenant: TENANT, valueExchangeId: exchange.id }), "validate");
 row("policies run", String(review.policiesRun));
 row("passed", String(review.passed));
 for (const v of review.violations) row(`  ${v.severity}`, `${v.policy}: ${v.message}`);

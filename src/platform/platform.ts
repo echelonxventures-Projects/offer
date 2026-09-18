@@ -51,6 +51,9 @@ import type { MetricReader } from "../observability/alerts.ts";
 import { AuditService } from "../audit/audit-service.ts";
 import type { AuditAnchor } from "../audit/anchor.ts";
 import { MaintenanceRunner } from "../operations/maintenance.ts";
+import { PreviewEngine } from "../authoring/preview.ts";
+import { contextSampleRegistry } from "../authoring/samples.ts";
+import { evaluableConditionsPolicy } from "../authoring/policy.ts";
 import { objectiveRegistry } from "../engines/objectives.ts";
 
 import { AttributionEngine, attributionModelRegistry } from "../attribution/attribution.ts";
@@ -118,6 +121,8 @@ export class GoipPlatform {
   readonly health: HealthEngine;
   readonly alerts: AlertEngine;
   readonly auditService: AuditService;
+  /** Runs an offer against sample contexts before it is published. */
+  readonly preview: PreviewEngine;
   /** Everything that needs running periodically. The host owns the timer. */
   readonly maintenance: MaintenanceRunner;
 
@@ -207,6 +212,19 @@ export class GoipPlatform {
     this.discovery = new DiscoveryEngine(this.deps, this.decisions.eligibility, this.decisions.benefits);
     this.attribution = new AttributionEngine(attributionModels, this.store.touchpoints);
     this.reaper = new ReservationReaper(this.deps, this.executions);
+    const samples = contextSampleRegistry();
+    this.preview = new PreviewEngine({
+      context: this.context,
+      eligibility: this.decisions.eligibility,
+      benefits: this.decisions.benefits,
+      samples,
+      economic: this.economic,
+    });
+
+    // Registered after preview exists, so the publish gate can run it. This is
+    // what turns RULE_ERROR from a production incident into a refused publish.
+    policies.register(evaluableConditionsPolicy({ preview: this.preview }));
+
     this.health = new HealthEngine(this.deps, this.config.health);
     this.alerts = new AlertEngine();
     this.auditService = new AuditService(this.store, this.temporal, options.anchor);
@@ -250,6 +268,7 @@ export class GoipPlatform {
       "attribution-model": attributionModels,
       "domain-profile": profiles,
       "context-resolver": this.context.resolvers,
+      "context-sample": samples,
       "alert-rule": this.alerts.rules,
       "maintenance-job": this.maintenance.jobs,
     } as Record<string, Registry<{ key: string; label: string }>>;

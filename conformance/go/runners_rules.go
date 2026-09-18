@@ -51,6 +51,24 @@ func (e *evaluation) spend() error {
 
 /* ------------------------------- paths -------------------------------- */
 
+// missing marks a path that is not present in the context.
+//
+// Go's `any` uses nil for both "absent" and "explicit null", which the
+// specification treats as different states - a missing path is not equal to a
+// literal null, because conflating them hides a typo'd path behind a plausible
+// false. A sentinel keeps them apart.
+type missingType struct{}
+
+var missing = missingType{}
+
+func isAbsent(value any) bool {
+	if value == nil {
+		return true
+	}
+	_, ok := value.(missingType)
+	return ok
+}
+
 // readPath is the one accessor rules use. It never throws: a missing path is
 // undefined, which operators handle explicitly.
 func readPath(root any, path string) any {
@@ -60,23 +78,23 @@ func readPath(root any, path string) any {
 	cursor := root
 	for _, segment := range strings.Split(path, ".") {
 		if cursor == nil {
-			return nil
+			return missing
 		}
 		switch typed := cursor.(type) {
 		case []any:
 			index := 0
 			if _, err := fmt.Sscanf(segment, "%d", &index); err != nil || index < 0 || index >= len(typed) {
-				return nil
+				return missing
 			}
 			cursor = typed[index]
 		case map[string]any:
 			value, ok := typed[segment]
 			if !ok {
-				return nil
+				return missing
 			}
 			cursor = value
 		default:
-			return nil
+			return missing
 		}
 	}
 	return cursor
@@ -99,7 +117,7 @@ func (e *evaluation) resolveTerm(term any, depth int) (any, error) {
 	if raw, present := asMap["path"]; present {
 		path, _ := raw.(string)
 		value := readPath(e.context, path)
-		if value == nil {
+		if isAbsent(value) {
 			if fallback, hasDefault := asMap["default"]; hasDefault {
 				return fallback, nil
 			}
@@ -161,39 +179,55 @@ func asBig(value any) (*big.Int, bool) {
 	return nil, false
 }
 
-func compareValues(left, right any) (int, error) {
+// compareValues returns (ordering, present, error).
+//
+// present is false when either side is absent. That is a runtime state, not an
+// authoring mistake: discovery happens before a basket exists, so cart paths
+// are legitimately missing there, and an ordering against a missing value is
+// simply false. A present-but-wrong-typed operand is still an error.
+func compareValues(left, right any) (int, bool, error) {
+	if isAbsent(left) || isAbsent(right) {
+		return 0, false, nil
+	}
 	if l, ok := asAmount(left); ok {
 		if r, ok := asAmount(right); ok {
-			return compareAmounts(l, r)
+			ordering, err := compareAmounts(l, r)
+			return ordering, true, err
 		}
-		return 0, ruleFail("cannot order %s against %s", describe(left), describe(right))
+		return 0, false, ruleFail("cannot order %s against %s", describe(left), describe(right))
 	}
 	if l, ok := asBig(left); ok {
 		if r, ok := asBig(right); ok {
-			return l.Cmp(r), nil
+			return l.Cmp(r), true, nil
 		}
 	}
 	ls, lok := left.(string)
 	rs, rok := right.(string)
 	if lok && rok {
-		return strings.Compare(ls, rs), nil
+		return strings.Compare(ls, rs), true, nil
 	}
 	lb, lok := left.(bool)
 	rb, rok := right.(bool)
 	if lok && rok {
 		switch {
 		case lb == rb:
-			return 0, nil
+			return 0, true, nil
 		case lb:
-			return 1, nil
+			return 1, true, nil
 		default:
-			return -1, nil
+			return -1, true, nil
 		}
 	}
-	return 0, ruleFail("cannot order %s against %s", describe(left), describe(right))
+	return 0, false, ruleFail("cannot order %s against %s", describe(left), describe(right))
 }
 
 func equalValues(left, right any) bool {
+	// Absent equals absent, but absent does not equal an explicit null.
+	leftMissing := isMissingSentinel(left)
+	rightMissing := isMissingSentinel(right)
+	if leftMissing || rightMissing {
+		return leftMissing && rightMissing
+	}
 	if l, ok := asAmount(left); ok {
 		r, ok := asAmount(right)
 		return ok && l.Unit == r.Unit && l.Scale == r.Scale && l.Minor.Cmp(r.Minor) == 0
@@ -240,9 +274,16 @@ func equalValues(left, right any) bool {
 	return false
 }
 
+func isMissingSentinel(value any) bool {
+	_, ok := value.(missingType)
+	return ok
+}
+
 func describe(value any) string {
 	switch typed := value.(type) {
 	case nil:
+		return "null"
+	case missingType:
 		return "undefined"
 	case Amount:
 		return "amount(" + typed.Unit + ")"
@@ -403,9 +444,12 @@ func (e *evaluation) apply(op string, node map[string]any, depth int) (bool, err
 		if err != nil {
 			return false, err
 		}
-		ordering, err := compareValues(left, right)
+		ordering, present, err := compareValues(left, right)
 		if err != nil {
 			return false, err
+		}
+		if !present {
+			return false, nil
 		}
 		switch op {
 		case "gt":
@@ -431,13 +475,16 @@ func (e *evaluation) apply(op string, node map[string]any, depth int) (bool, err
 		if err != nil {
 			return false, err
 		}
-		lowCmp, err := compareValues(value, low)
+		lowCmp, lowPresent, err := compareValues(value, low)
 		if err != nil {
 			return false, err
 		}
-		highCmp, err := compareValues(value, high)
+		highCmp, highPresent, err := compareValues(value, high)
 		if err != nil {
 			return false, err
+		}
+		if !lowPresent || !highPresent {
+			return false, nil
 		}
 		return lowCmp >= 0 && highCmp <= 0, nil
 
@@ -446,7 +493,7 @@ func (e *evaluation) apply(op string, node map[string]any, depth int) (bool, err
 		if err != nil {
 			return false, err
 		}
-		return value != nil, nil
+		return !isAbsent(value), nil
 
 	case "in", "notIn":
 		value, err := e.resolveTerm(node["value"], depth)

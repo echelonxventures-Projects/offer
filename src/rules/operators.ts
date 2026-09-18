@@ -31,7 +31,7 @@ function childNodes(node: RuleNode, key: string): Result<unknown[]> {
 }
 
 /** Resolve the conventional `left`/`right` pair and order them. */
-function ordered(node: RuleNode, ctx: EvalContext): Result<{ ord: -1 | 0 | 1; detail: string }> {
+function ordered(node: RuleNode, ctx: EvalContext): Result<{ ord: -1 | 0 | 1 | null; detail: string }> {
   const left = ctx.resolve(node.left);
   if (!left.ok) return left;
   const right = ctx.resolve(node.right);
@@ -195,6 +195,9 @@ const COMPARISON: RuleOperator[] = [
       if (!lowCmp.ok) return lowCmp;
       const highCmp = compareValues(value.value, high.value);
       if (!highCmp.ok) return highCmp;
+      if (lowCmp.value === null || highCmp.value === null) {
+        return no(`${render(value.value)} is absent or unbounded`);
+      }
       const inside = lowCmp.value >= 0 && highCmp.value <= 0;
       return ok({
         result: inside,
@@ -211,6 +214,11 @@ function withOrdering(
 ): Result<OperatorOutcome> {
   const cmp = ordered(node, ctx);
   if (!cmp.ok) return cmp;
+  // An absent operand cannot satisfy an ordering. It is reported in the trace
+  // so the reason is visible, rather than looking like a failed comparison.
+  if (cmp.value.ord === null) {
+    return ok({ result: false, detail: `${cmp.value.detail} (a value was absent)` });
+  }
   return ok({ result: test(cmp.value.ord), detail: cmp.value.detail });
 }
 

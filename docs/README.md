@@ -107,6 +107,7 @@ Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
 | [0014](06-adr/0014-observability-as-ports-not-vendors.md) | Observability as ports, not vendors |
 | [0015](06-adr/0015-the-hardcoding-audit.md) | The hardcoding audit |
 | [0016](06-adr/0016-identity-at-the-gateway.md) | Identity at the gateway, not in the capability |
+| [0017](06-adr/0017-preview-as-a-publish-gate.md) | Preview as a publish gate |
 
 ## 07 — Operations
 
@@ -120,6 +121,7 @@ Everything in [`spec/`](../spec/README.md) is independent of TypeScript.
 | [06 Runbook](07-operations/06-runbook.md) | The incidents you will actually have |
 | [07 Maintenance](07-operations/07-maintenance.md) | What runs periodically, and what breaks if it does not |
 | [08 API](07-operations/08-api.md) | Running the HTTP layer: pipeline, roles, rate limits |
+| [09 Authoring](07-operations/09-authoring.md) | Checking an offer before it can hurt anybody |
 
 ## 08 — Roadmap
 

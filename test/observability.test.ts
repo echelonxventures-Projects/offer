@@ -11,7 +11,7 @@ import { sequentialIdFactory } from "../src/kernel/ids.ts";
 import { fixedClock } from "../src/universal/temporal/authority.ts";
 import { instant } from "../src/universal/temporal/chronology.ts";
 import { MemoryPlatformStore } from "../src/adapters/memory-store.ts";
-import { TENANT, TEST_MS, cartContext, publish, simpleDraft, unwrap } from "./_helpers.ts";
+import { TENANT, TEST_MS, cartContext, publish, publishUnchecked, simpleDraft, unwrap } from "./_helpers.ts";
 
 const at = (ms: number) => instant("earth.unix.ms", BigInt(ms));
 
@@ -158,7 +158,7 @@ describe("engine instrumentation", () => {
 
   test("a broken condition is emitted at error severity, not swallowed", async () => {
     const { platform, telemetry } = await instrumented();
-    await publish(
+    await publishUnchecked(
       platform,
       simpleDraft({ conditions: { op: "gt", left: { path: "subject.id" }, right: { literal: 5 } } }),
     );
@@ -295,7 +295,7 @@ describe("health", () => {
 describe("alerts", () => {
   test("a broken condition pages", async () => {
     const { platform, telemetry } = await instrumented();
-    await publish(
+    await publishUnchecked(
       platform,
       simpleDraft({ conditions: { op: "gt", left: { path: "subject.id" }, right: { literal: 5 } } }),
     );
@@ -321,7 +321,7 @@ describe("alerts", () => {
 
   test("counter alerts use deltas, so they do not latch forever", async () => {
     const { platform, telemetry } = await instrumented();
-    const broken = await publish(
+    const broken = await publishUnchecked(
       platform,
       simpleDraft({ conditions: { op: "gt", left: { path: "subject.id" }, right: { literal: 5 } } }),
     );
@@ -388,7 +388,7 @@ describe("alerts", () => {
 
     // ...and a broken condition (page). Evaluated on its own, because a broken
     // rule is an error that would otherwise fail every later decision too.
-    const broken = await publish(
+    const broken = await publishUnchecked(
       platform,
       simpleDraft({ name: "broken", conditions: { op: "gt", left: { path: "subject.id" }, right: { literal: 5 } } }),
     );

@@ -50,6 +50,26 @@ export interface EligibilityInput {
   readonly grants?: readonly Grant[];
 }
 
+/**
+ * Describe the conditions check.
+ *
+ * A failing check reporting "4 node(s) evaluated" is true and useless. What an
+ * author or a support agent needs is *which predicate decided it*, which is the
+ * last falsifying entry in the trace - the innermost one, since logical
+ * operators record after their children.
+ */
+function describeConditionOutcome(
+  hasConditions: boolean,
+  outcome: { satisfied: boolean; trace: readonly RuleTraceEntry[]; nodesEvaluated: number },
+): string {
+  if (!hasConditions) return "no conditions";
+  if (outcome.satisfied) return `${outcome.nodesEvaluated} node(s) evaluated`;
+
+  const deciding = outcome.trace.find((entry) => !entry.result);
+  if (!deciding) return `${outcome.nodesEvaluated} node(s) evaluated`;
+  return deciding.detail ? `'${deciding.op}' was not satisfied: ${deciding.detail}` : `'${deciding.op}' was not satisfied`;
+}
+
 export class EligibilityEngine {
   readonly #deps: EngineDeps;
 
@@ -189,7 +209,7 @@ export class EligibilityEngine {
       record(
         "conditions",
         evaluated.value.satisfied,
-        exchange.conditions ? `${evaluated.value.nodesEvaluated} node(s) evaluated` : "no conditions",
+        describeConditionOutcome(exchange.conditions !== undefined, evaluated.value),
       );
     }
 

@@ -15,7 +15,26 @@ import { compare as compareAmount } from "../universal/economic/amount.ts";
 
 export type Ordering = -1 | 0 | 1;
 
-export function compareValues(left: unknown, right: unknown): Result<Ordering> {
+/**
+ * `null` means one side was absent, which is different from the two being
+ * incomparable.
+ *
+ * A missing path is a runtime *state*: discovery happens before a basket
+ * exists, so `cart.subtotal` is legitimately undefined there. Treating that as
+ * an error meant a single offer with a cart-based condition failed the whole
+ * discovery response for everybody.
+ *
+ * A present-but-wrong-typed value is different - comparing a string to money is
+ * an authoring mistake, and it stays an error, because returning false would
+ * hide it until it cost somebody money.
+ */
+export type ComparisonOutcome = Ordering | null;
+
+export function compareValues(left: unknown, right: unknown): Result<ComparisonOutcome> {
+  if (left === undefined || left === null || right === undefined || right === null) {
+    return ok(null);
+  }
+
   if (isAmount(left) && isAmount(right)) return compareAmount(left, right);
 
   if (typeof left === "bigint" || typeof right === "bigint") {
@@ -75,7 +94,7 @@ function toBigInt(value: unknown): bigint | null {
   return null;
 }
 
-function mismatch(left: unknown, right: unknown): Result<Ordering> {
+function mismatch(left: unknown, right: unknown): Result<ComparisonOutcome> {
   return fail(ErrorCode.RULE_ERROR, `cannot order ${describe(left)} against ${describe(right)}`, {
     left: describe(left),
     right: describe(right),

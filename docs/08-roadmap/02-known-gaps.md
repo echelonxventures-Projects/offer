@@ -5,6 +5,19 @@ not the effort to build it.
 
 ---
 
+## Closed in Phase 4
+
+| Was | Now |
+| --- | --- |
+| **No rule preview before publishing** | `rules.evaluable` policy: an unevaluable condition blocks publication |
+| `validate` checked policy, not semantics | It runs preview, and works on an unsaved draft |
+| No way to review a revision | `compareVersions` classifies each change by effect on exposure |
+| Decisions were data, not answers | `explainDecision` / `explainOffer` / `explainPreview` render them |
+| A cart condition broke discovery | An absent operand is false, not an error |
+| Failed conditions said "4 nodes evaluated" | They name the predicate that decided |
+
+Verified by `test/authoring.test.ts` (25 tests) and `examples/10-authoring.ts`.
+
 ## Closed in Phase 3
 
 | Was | Now |
@@ -78,13 +91,6 @@ It is now one call from any scheduler rather than unwritten code.
 [maintenance](../07-operations/07-maintenance.md).
 
 ## High — will cause an incident
-
-### No rule preview before publishing
-`validate` checks policy, not rule semantics. A condition comparing a string to
-money passes review and fails at runtime with `RULE_ERROR`.
-
-**Consequence:** a campaign silently delivers nothing until somebody notices.
-**Fix:** evaluate conditions against sample contexts at publish time.
 
 ### No registry bundle versioning
 Decisions do not record which registry version produced them.
@@ -167,6 +173,17 @@ overlapping validity, which a real store should add.
 ### The rate limiter is per-instance
 With four instances the effective limit is four times the configured one. The
 port is one method; a shared store is the fix.
+
+### No authoring console
+Deliberately not built: a console is a client, and bundling one would mean
+choosing a framework and a build step. The capabilities it needs exist —
+`validate` with preview, `compareVersions`, the explanation renderers and a
+generated OpenAPI document. See [ADR 0017](../06-adr/0017-preview-as-a-publish-gate.md).
+
+### Preview is only as good as its samples
+The shipped context samples are generic and catch structural mistakes, not
+business ones. A deployment must replace them with samples drawn from its own
+traffic.
 
 ### No metrics exporter
 The catalogue makes writing one mechanical — `describeMetrics()` emits name,

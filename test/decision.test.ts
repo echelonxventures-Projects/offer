@@ -7,7 +7,7 @@ import { conflictBetween, applicationOrder } from "../src/engines/stacking.ts";
 import { instant } from "../src/universal/temporal/chronology.ts";
 import { toDecimal } from "../src/universal/economic/amount.ts";
 import type { ValueExchange } from "../src/model/value-exchange.ts";
-import { TENANT, cartContext, funded, publish, simpleDraft, unwrap, usd } from "./_helpers.ts";
+import { TENANT, cartContext, funded, publish, publishUnchecked, simpleDraft, unwrap, usd } from "./_helpers.ts";
 
 const stackingOnly = (id: string, over: Partial<ValueExchange["stacking"]>, priority = 0): ValueExchange =>
   ({ id, priority, stacking: over } as ValueExchange);
@@ -46,7 +46,7 @@ describe("eligibility checks", () => {
 
   test("a broken rule is an error, not a quiet non-qualification", async () => {
     const p = await funded();
-    const exchange = await publish(p, simpleDraft({ conditions: { op: "gt", left: { path: "subject.id" }, right: { literal: 5 } } }));
+    const exchange = await publishUnchecked(p, simpleDraft({ conditions: { op: "gt", left: { path: "subject.id" }, right: { literal: 5 } } }));
     const context = unwrap(await p.context.resolve(cartContext()));
     const result = await p.decisions.eligibility.evaluate({ exchange, context });
     assert.equal(result.ok, false);

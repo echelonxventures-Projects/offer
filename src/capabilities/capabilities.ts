@@ -36,6 +36,9 @@ import { availableOf } from "../ledger/settlement.ts";
 import type { LedgerEntry } from "../ledger/ledger.ts";
 import type { PartyRef } from "../model/funding.ts";
 import { cloneValueExchange, createValueExchange } from "../platform/factory.ts";
+import type { PreviewReport } from "../authoring/preview.ts";
+import type { ExchangeDiff } from "../authoring/diff.ts";
+import { diffValueExchange } from "../authoring/diff.ts";
 import type { CapabilityDescriptor } from "./descriptors.ts";
 import { capabilityRegistry } from "./descriptors.ts";
 import type { GoipPlatform } from "../platform/platform.ts";
@@ -210,10 +213,93 @@ export class Capabilities {
     return ok({ report: report.value, exchange: moved.value });
   }
 
-  async validate(request: { tenant: string; valueExchangeId: string }): Promise<Result<PolicyReport>> {
-    const exchange = await this.#platform.store.exchanges.get(request.tenant, request.valueExchangeId);
+  /**
+   * Check an offer without changing anything.
+   *
+   * Two things, because an author needs both and they fail differently:
+   *
+   *   - **Policy**: is it fundable, owned, bounded, using registered types?
+   *   - **Preview**: does it actually evaluate, against representative
+   *     contexts? This is what catches a condition that would pass review and
+   *     then fail silently in production.
+   *
+   * A draft can be checked before it is ever saved, which is the point: the
+   * feedback arrives while the author is still editing.
+   */
+  async validate(request: {
+    tenant: string;
+    valueExchangeId?: string;
+    /** An unsaved draft. Checked as if it were about to be published. */
+    draft?: ValueExchangeDraft;
+    /** Run preview. Defaults to true; pass options to narrow the samples. */
+    preview?: boolean | { tags?: readonly string[]; samples?: readonly string[] };
+  }): Promise<Result<{ report: PolicyReport; preview?: PreviewReport }>> {
+    const exchange = await this.#resolveForValidation(request);
     if (!exchange.ok) return exchange;
-    return await this.#platform.governance.review(exchange.value);
+
+    const report = await this.#platform.governance.review(exchange.value);
+    if (!report.ok) return report;
+
+    if (request.preview === false) return ok({ report: report.value });
+
+    const options = typeof request.preview === "object" ? request.preview : {};
+    const preview = await this.#platform.preview.preview(exchange.value, {
+      tenant: request.tenant,
+      ...(options.tags === undefined ? {} : { tags: options.tags }),
+      ...(options.samples === undefined ? {} : { samples: options.samples }),
+    });
+    if (!preview.ok) return preview;
+
+    return ok({ report: report.value, preview: preview.value });
+  }
+
+  /** Either a stored exchange, or a draft materialised without being saved. */
+  async #resolveForValidation(request: {
+    tenant: string;
+    valueExchangeId?: string;
+    draft?: ValueExchangeDraft;
+  }): Promise<Result<ValueExchange>> {
+    if (request.valueExchangeId !== undefined) {
+      return this.#platform.store.exchanges.get(request.tenant, request.valueExchangeId);
+    }
+    if (request.draft === undefined) {
+      return fail(ErrorCode.INVALID_REQUEST, "validate needs either a valueExchangeId or a draft");
+    }
+
+    const profile = this.#platform.deps.profiles.require(request.draft.profile);
+    if (!profile.ok) return profile;
+
+    const at = this.#now();
+    if (!at.ok) return at;
+
+    // Materialised, never stored: validating a draft must not create anything.
+    return ok(
+      createValueExchange({
+        tenant: request.tenant,
+        draft: request.draft,
+        actor: "validation",
+        at: at.value,
+        ids: this.#platform.ids,
+        id: "",
+      }),
+    );
+  }
+
+  /** Behavioural difference between a stored offer and a proposed revision. */
+  async compareVersions(request: {
+    tenant: string;
+    valueExchangeId: string;
+    draft: ValueExchangeDraft;
+  }): Promise<Result<ExchangeDiff>> {
+    const current = await this.#platform.store.exchanges.get(request.tenant, request.valueExchangeId);
+    if (!current.ok) return current;
+
+    const proposed = await this.#resolveForValidation({ tenant: request.tenant, draft: request.draft });
+    if (!proposed.ok) return proposed;
+
+    return ok(
+      diffValueExchange(current.value, { ...proposed.value, id: current.value.id, version: current.value.version + 1 }),
+    );
   }
 
   /* ==================== distribute ==================== */

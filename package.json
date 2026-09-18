@@ -25,6 +25,7 @@
     "example:durability": "node examples/07-durability.ts",
     "example:operations": "node examples/08-operations.ts",
     "example:api": "node examples/09-api.ts",
+    "example:authoring": "node examples/10-authoring.ts",
     "vectors:generate": "node tools/generate-vectors.ts",
     "vectors:check": "node tools/generate-vectors.ts --check",
     "docs:registries": "node tools/generate-registry-reference.ts",

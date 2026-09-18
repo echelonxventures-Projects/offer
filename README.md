@@ -96,6 +96,7 @@ const quote = caps.apply({
 | Adapters | Storage ports, memory and SQLite implementations | `src/adapters` |
 | Observability | Telemetry, metrics catalogue, health, alerts | `src/observability` |
 | API | Gateway, authentication, authorisation, rate limits, HTTP | `src/api` |
+| Authoring | Preview, explanations, behavioural diff | `src/authoring` |
 | Operations | Scheduler-agnostic maintenance jobs | `src/operations` |
 
 ## Worked examples
@@ -113,6 +114,7 @@ Each is a runnable file that prints what it did and why.
 | `07-durability.ts` | Restart with nothing lost; 20 concurrent claims, 1 admitted |
 | `08-operations.ts` | A day's traffic, then the maintenance pass that catches what broke |
 | `09-api.ts` | A real HTTP server, and the four things it refuses |
+| `10-authoring.ts` | Catching a broken offer before it silently delivers nothing |
 
 ## Two halves
 
@@ -172,8 +174,8 @@ nothing triggering the maintenance runner.
 
 | | |
 | --- | --- |
-| Tests | 356, across 2 storage adapters |
-| Conformance vectors | 289, across 2 language implementations |
-| Registries | 27, holding 204 entries |
+| Tests | 382, across 2 storage adapters |
+| Conformance vectors | 295, across 2 language implementations |
+| Registries | 28, holding 210 entries |
 | Typecheck | strict, clean |
 | Runtime dependencies | 0 |

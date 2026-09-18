@@ -29,7 +29,7 @@ describe("policies", () => {
     const created = unwrap(
       await p.capabilities.create({ tenant: TENANT, actor: "a", draft: simpleDraft({ funding: { model: "single", splits: [] } }) }),
     );
-    const report = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: created.id }));
+    const { report } = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: created.id }));
     assert.equal(report.passed, false);
     assert.ok(report.violations.some((v) => v.policy === "funding.declared" && v.severity === "error"));
 
@@ -46,7 +46,7 @@ describe("policies", () => {
         draft: simpleDraft({ funding: { model: "single", splits: [{ sourceId: "ghost" }] } }),
       }),
     );
-    const report = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: created.id }));
+    const { report } = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: created.id }));
     assert.ok(report.violations.some((v) => v.policy === "funding.sources_exist"));
   });
 
@@ -55,7 +55,7 @@ describe("policies", () => {
     const created = unwrap(
       await p.capabilities.create({ tenant: TENANT, actor: "a", draft: simpleDraft({ governance: {} }) }),
     );
-    const report = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: created.id }));
+    const { report } = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: created.id }));
     const warnings = report.violations.filter((v) => v.severity === "warning").map((v) => v.policy);
     assert.ok(warnings.includes("owner.named"));
     assert.equal(report.passed, true, "warnings must not block publication");
@@ -66,7 +66,7 @@ describe("policies", () => {
     const p = await funded();
     // merchant-1 has a capped budget, so exposure is bounded by it.
     const bounded = unwrap(await p.capabilities.create({ tenant: TENANT, actor: "a", draft: simpleDraft() }));
-    const boundedReport = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: bounded.id }));
+    const { report: boundedReport } = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: bounded.id }));
     assert.equal(boundedReport.violations.some((v) => v.policy === "budget.bounded"), false);
 
     // An uncapped funder with no limits on the exchange is unbounded exposure.
@@ -82,7 +82,7 @@ describe("policies", () => {
         draft: simpleDraft({ funding: { model: "single", splits: [{ sourceId: "unlimited" }] } }),
       }),
     );
-    const report = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: unbounded.id }));
+    const { report } = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: unbounded.id }));
     assert.ok(report.violations.some((v) => v.policy === "budget.bounded" && v.severity === "warning"));
     assert.equal(report.passed, true, "it is a warning, not a block");
   });
@@ -97,7 +97,7 @@ describe("policies", () => {
         }),
       }),
     );
-    const report = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: created.id }));
+    const { report } = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: created.id }));
     assert.ok(report.violations.some((v) => v.policy === "commission.payable_unit" && v.severity === "error"));
   });
 
@@ -109,7 +109,7 @@ describe("policies", () => {
         draft: simpleDraft({ window: { calendar: "gregorian", constraints: [{ field: "sol", in: [1] }] } }),
       }),
     );
-    const report = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: created.id }));
+    const { report } = unwrap(await p.capabilities.validate({ tenant: TENANT, valueExchangeId: created.id }));
     assert.ok(report.violations.some((v) => v.policy === "window.valid"));
   });
 });

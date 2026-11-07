@@ -8,7 +8,7 @@
  */
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import {
   MemoryApiKeyStore,
@@ -22,7 +22,9 @@ import { MemoryRateLimiter, rateLimitPolicyRegistry, policyFor } from "../src/ap
 import { Gateway, resolveTenant } from "../src/api/gateway.ts";
 import { createHttpServer } from "../src/api/http.ts";
 import * as https from "node:https";
-import { generateKeyPairSync, createSign, X509Certificate } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { generateOpenApi } from "../src/api/openapi.ts";
 import { HTTP_STATUS } from "../src/api/status.ts";
 import { capabilityRegistry, CAPABILITIES } from "../src/capabilities/descriptors.ts";
@@ -30,32 +32,55 @@ import { authenticatorRegistry } from "../src/api/authentication.ts";
 import { MemoryTelemetry } from "../src/observability/telemetry.ts";
 
 /**
- * A throwaway self-signed certificate, so the TLS test needs no fixture file.
+ * A throwaway self-signed certificate for 127.0.0.1, so the TLS test needs no
+ * fixture file and no private key is ever committed.
  *
- * Generated per test and never trusted by anything outside it - `rejectUnauthorized`
- * is false only in the caller this file controls. A deployment presents a
- * certificate a real CA signed; this exists to prove the adapter wires TLS
- * through, not to recommend self-signing.
+ * Node can parse X.509 but cannot issue it, so the `openssl` command makes one,
+ * valid for a day, in a temporary directory that is removed straight away.
+ * Returns undefined when `openssl` is not installed; the test then skips and
+ * says why. Only the client in this file trusts the certificate, and it trusts
+ * exactly this one. A deployment presents a certificate a real CA signed; this
+ * exists to prove the adapter wires TLS through, not to recommend self-signing.
  */
-async function selfSigned(): Promise<{ key: string; cert: string }> {
-  const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
-  const signer = createSign("SHA256");
-  signer.write(
-    JSON.stringify({
-      CN: "goip-test",
-      ST: "DEV",
-      C: "ZZ",
-      notBefore: new Date(Date.now() - 86_400_000).toISOString(),
-      notAfter: new Date(Date.now() + 86_400_000).toISOString(),
-    }),
-  );
-  signer.end();
-  const signature = signer.sign(privateKey);
-  const certificate = new X509Certificate(publicKey.export({ type: "spki", format: "pem" }));
-  return {
-    key: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
-    cert: certificate.toString(),
-  };
+function selfSigned(): { key: string; cert: string } | undefined {
+  const dir = mkdtempSync(join(tmpdir(), "goip-tls-"));
+  try {
+    const keyPath = join(dir, "key.pem");
+    const certPath = join(dir, "cert.pem");
+    const made = spawnSync(
+      "openssl",
+      ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-subj", "/CN=goip-test",
+        "-addext", "subjectAltName=IP:127.0.0.1", "-keyout", keyPath, "-out", certPath],
+      { stdio: "ignore" },
+    );
+    if (made.error || made.status !== 0) return undefined;
+    return { key: readFileSync(keyPath, "utf8"), cert: readFileSync(certPath, "utf8") };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** POST over HTTPS, trusting only `ca`. Node's fetch ignores an https.Agent, so this uses https.request. */
+function postTls(
+  port: number,
+  path: string,
+  ca: string,
+  headers: Record<string, string>,
+  body: string,
+): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const request = https.request(
+      { host: "127.0.0.1", port, path, method: "POST", ca, headers: { ...headers, "content-length": Buffer.byteLength(body) } },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => resolve({ status: response.statusCode ?? 0, body: Buffer.concat(chunks).toString("utf8") }));
+        response.on("error", reject);
+      },
+    );
+    request.on("error", reject);
+    request.end(body);
+  });
 }
 import { encode } from "../src/kernel/codec.ts";
 import { TENANT, cartContext, funded, publish, simpleDraft, unwrap } from "./_helpers.ts";
@@ -533,30 +558,32 @@ describe("HTTP transport", () => {
     }
   });
 
-  test("TLS serves the same gateway over HTTPS", async () => {
+  test("TLS serves the same gateway over HTTPS", async (t) => {
+    const pair = selfSigned();
+    if (pair === undefined) {
+      t.skip("the openssl command is not installed, so no test certificate can be made");
+      return;
+    }
     const { gateway, secrets } = await harness();
-    const { key, cert } = await selfSigned();
     const server = createHttpServer({
       gateway,
       descriptors: capabilityRegistry(),
-      tls: { key, cert },
+      tls: { key: pair.key, cert: pair.cert },
     });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const { port } = server.address() as AddressInfo;
 
     try {
-      // A self-signed certificate is only trusted because the test says so; a
-      // deployment presents one a real CA signed.
-      const agent = new https.Agent({ rejectUnauthorized: false });
-      const response = await fetch(`https://127.0.0.1:${port}/v1/apply`, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `ApiKey ${secrets.checkout}` },
-        body: encode({ context: cartContext() }),
-        // @ts-expect-error fetch's typings predate the agent option
-        agent,
-      });
+      // The client trusts exactly this certificate and nothing else; verification stays on.
+      const response = await postTls(
+        port,
+        "/v1/apply",
+        pair.cert,
+        { "content-type": "application/json", authorization: `ApiKey ${secrets.checkout}` },
+        encode({ context: cartContext() }),
+      );
       assert.equal(response.status, 200, "the same handler answered over TLS");
-      const body = (await response.json()) as { decision: { payableReduction: { minor: string } } };
+      const body = JSON.parse(response.body) as { decision: { payableReduction: { minor: string } } };
       assert.equal(body.decision.payableReduction.minor, "~bigint:1000");
     } finally {
       server.close();
@@ -565,7 +592,13 @@ describe("HTTP transport", () => {
 
   test("partial TLS is refused rather than silently plaintext", () => {
     assert.throws(
-      () => createHttpServer({ gateway: null as never, descriptors: capabilityRegistry(), tls: { key: "k" } }),
+      () =>
+        createHttpServer({
+          gateway: null as never,
+          descriptors: capabilityRegistry(),
+          // @ts-expect-error a key without a cert is the misconfiguration under test
+          tls: { key: "k" },
+        }),
       /requires both a key and a cert/,
     );
   });

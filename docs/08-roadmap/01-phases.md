@@ -334,8 +334,8 @@ the storage layer.
 platform can now run multi-writer. Nothing still schedules maintenance, and that
 entry stays where it is.
 
-Postgres forced three portability defects into the open that SQLite had been
-quietly accepting, and all three were found by running the suite rather than
+Postgres forced four portability defects into the open that SQLite had been
+quietly accepting, and all four were found by running the suite rather than
 reading the code:
 
 - `ON CONFLICT ... DO UPDATE SET redemptions = redemptions + 1` is ambiguous in
@@ -344,8 +344,17 @@ reading the code:
   `seq` — which also fixed a latent point: undoing "the most recent redemption"
   by timestamp cannot choose between two in the same second.
 - `MAX(a, b)` is a scalar in SQLite and an aggregate in Postgres.
+- A bare `ORDER BY` on a text column is codepoint order in SQLite (its only
+  collation is BINARY) and locale order in Postgres (`LC_COLLATE`), so the two
+  adapters disagreed on any mixed-case id — and ids here embed unit codes like
+  `USD`, so mixed-case is the normal case. The dialect now renders text sorts
+  (`COLLATE "C"`), and a guard in `test/extensibility.test.ts` flags a bare
+  text-column sort the moment it is written. This is the SQL-layer half of
+  [ADR 0020](../06-adr/0020-codepoint-ordering.md), whose JavaScript half the
+  conformance test had already caught.
 
-See [ADR 0021](../06-adr/0021-the-driver-is-a-port.md) and
+See [ADR 0021](../06-adr/0021-the-driver-is-a-port.md),
+[ADR 0020](../06-adr/0020-codepoint-ordering.md) and
 [SQL adapters](../07-operations/11-sql-adapters.md).
 
 ## What is not on this roadmap

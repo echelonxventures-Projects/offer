@@ -13,14 +13,14 @@ CONTEXT → CONDITIONS → ELIGIBILITY → BENEFIT → EXECUTION → SETTLEMENT 
 - **Zero build step.** `node examples/01-coupon.ts` runs the real platform.
 - **Durable and atomic.** SQLite adapter on Node's built-in driver; limits and
   budgets are enforced inside the write, proven by concurrency tests.
-- **Language-agnostic contract.** 289 conformance vectors, with an independent
-  **Go** implementation that reproduces every one of them.
+- **Language-agnostic contract.** 297 conformance vectors, with an independent
+  **Go** implementation that reproduces every assertion.
 - **Operable.** Vendor-neutral telemetry, integrity health checks, alert rules
   that each carry a runbook link, and a scheduler-agnostic maintenance runner.
 - **Authenticated.** A transport-neutral gateway with API keys or HMAC tokens,
   role-based authorisation, and two layers of rate limiting. The request body
   cannot name the actor.
-- **Nothing that varies is compiled in.** 27 registries plus configuration, with
+- **Nothing that varies is compiled in.** 32 registries plus configuration, with
   a test that greps the engines for hardcoded dispatch. What genuinely *cannot*
   be configuration is written down rather than glossed over:
   [what is fixed](docs/01-architecture/08-what-is-fixed.md).
@@ -34,8 +34,9 @@ CONTEXT → CONDITIONS → ELIGIBILITY → BENEFIT → EXECUTION → SETTLEMENT 
 
 ```bash
 node --version          # needs >= 22.6 (tested on 26)
-npm test                # 516 tests, no install required
-npm run demo            # all six worked examples
+npm test                # 517 tests, no install required
+npm run demo            # all thirteen worked examples
+npm run demo:server     # a live API on http://127.0.0.1:9119, with keys printed
 npm run example:coupon  # one of them
 ```
 
@@ -119,6 +120,11 @@ Each is a runnable file that prints what it did and why.
 | `12-intelligence.ts` | The graph, anomalies, a fitted model and a budget plan |
 | `13-postgres.ts` | The same platform on SQLite or PostgreSQL, unchanged |
 
+The one above is a server rather than a narrative: it stays up, so a client can
+point at it. `npm run demo:server` seeds a tenant, funds a budget, publishes an
+offer, prints four API keys (quote-only, checkout, finance, admin), proves the
+paths work first, and then waits. It is in-memory and clears on restart.
+
 ## Two halves
 
 | | |
@@ -129,8 +135,8 @@ Each is a runnable file that prints what it did and why.
 
 The split matters: an implementation has to be written in *some* language, so
 what is portable is the contract. `spec/vectors/` freezes behaviour as input and
-exact expected output, and the Go implementation reproduces all 289 cases with
-no shared code.
+exact expected output, and the Go implementation reproduces all 295 assertions
+with no shared code.
 
 ```bash
 npm run conformance     # reference + Go, against the same vectors
@@ -155,6 +161,7 @@ The three documents worth reading before anything else:
 | --- | --- |
 | `npm test` | Run the test suite |
 | `npm run demo` | Run all examples |
+| `npm run demo:server` | Serve a live demo API on port 9119 (keys printed) |
 | `npm run typecheck` | Strict TypeScript check (needs `npm install`) |
 | `npm run conformance` | Run the vectors against the reference and the Go implementation |
 | `npm run vectors:generate` | Regenerate the conformance vectors |
@@ -165,7 +172,7 @@ The three documents worth reading before anything else:
 
 ## Status
 
-A complete, working reference implementation. **Phases 1–6 are done:** storage
+A complete, working reference implementation. **Phases 1–7 are done:** storage
 is durable and atomic with two adapters held to a shared conformance suite;
 callers authenticate and cannot name themselves as somebody else; an offer with
 an unevaluable condition cannot be published; reconciliation folds forward from
@@ -184,7 +191,7 @@ the HTTP adapter, and no migration framework.
 
 | | |
 | --- | --- |
-| Tests | 516 across 3 adapters, 553 with PostgreSQL |
+| Tests | 517 across 3 adapters, 554 with PostgreSQL |
 | Conformance vectors | 295 assertions + 2 fixtures, across 2 language implementations |
 | Registries | 32, holding 227 entries |
 | Typecheck | strict, clean |

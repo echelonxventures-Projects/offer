@@ -1,6 +1,10 @@
 /**
  * Runs every example in order. Each gets a fresh platform, so they cannot
  * interfere with one another.
+ *
+ * `14-demo-server.ts` is deliberately absent: it is a server, not a narrative,
+ * so importing it here would block the run forever. It has its own script,
+ * `npm run demo:server`.
  */
 const examples = [
   "01-coupon.ts",

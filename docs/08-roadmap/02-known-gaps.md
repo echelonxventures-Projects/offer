@@ -14,6 +14,7 @@ not the effort to build it.
 | SQLite's 64-bit ceiling on a funding source | `NUMERIC(38,0)` on Postgres, keeping atomic reservation |
 | Two SQL adapters would have meant two schemas | One schema, four substituted type names |
 | `rowid` and `MAX(a,b)` were quietly SQLite-only | Portable in both, and the rewrite fixed an ordering ambiguity |
+| A bare `ORDER BY` on text was codepoint order on SQLite and locale order on Postgres | The dialect renders text sorts; both adapters now agree on mixed-case ids, and a guard keeps it |
 
 Verified by the conformance and concurrency suites running against Postgres:
 25 concurrent reservations still admit exactly one.
@@ -346,9 +347,9 @@ boundary rather than an algorithm. It also caught the oldest defect in the list:
 two storage adapters that had been quietly disagreeing about sort order for
 anything mixed-case, hidden by test fixtures that were all lowercase.
 
-What remains critical is narrower: **the durable adapter is single-writer**, and
-**nothing triggers maintenance**. Both are unwritten work rather than design
-flaws, and [the roadmap](01-phases.md) sequences them.
+What remains critical is one entry: **nothing triggers maintenance**. It is
+unwritten work rather than a design flaw, and [the roadmap](01-phases.md)
+sequences it.
 
 The other honest limitation is the one the whole list should be read against:
 this is a reference implementation with a conformance suite, not a deployed

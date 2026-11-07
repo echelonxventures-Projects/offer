@@ -7,14 +7,30 @@
  *
  * An Express or Fastify adapter is the same shape: read body, build `ApiRequest`,
  * call `gateway.handle`, write the response.
+ *
+ * TLS is opt-in through {@link HttpOptions.tls}. Termination in front of the
+ * process is still fine and often better - a load balancer that centralises
+ * certificates - but a process that must present its own certificate can now do
+ * so without an nginx beside it.
  */
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
+import { createServer as createSecureServer } from "node:https";
+import type { ServerOptions as HttpsServerOptions } from "node:https";
 import type { Gateway, ApiRequest } from "./gateway.ts";
 import { serialise } from "./gateway.ts";
 import type { Registry } from "../registry/registry.ts";
 import type { CapabilityDescriptor } from "../capabilities/descriptors.ts";
 import { decode } from "../kernel/codec.ts";
+
+export interface HttpTlsOptions {
+  /** Path or buffer of the private key, or a PKCS#8 PEM string. */
+  readonly key: string | Buffer;
+  /** Path or buffer of the certificate chain, or a PEM string. */
+  readonly cert: string | Buffer;
+  /** Optional CA bundle, for mutual TLS. */
+  readonly ca?: string | Buffer;
+}
 
 export interface HttpOptions {
   readonly gateway: Gateway;
@@ -25,6 +41,14 @@ export interface HttpOptions {
   readonly maxBodyBytes?: number;
   /** Health probe. Returns 200 when it resolves true. */
   readonly health?: () => Promise<boolean>;
+  /**
+   * Present a certificate from this process rather than terminating TLS upstream.
+   *
+   * Without this the adapter is plaintext, which is safe behind a terminating
+   * proxy and unsafe on a public interface. Supplying both a key and a cert is
+   * the minimum; anything less is a configuration error, not a degraded mode.
+   */
+  readonly tls?: HttpTlsOptions;
 }
 
 const TENANT_HEADER = "x-goip-tenant";
@@ -66,14 +90,29 @@ async function readBody(request: IncomingMessage, limit: number): Promise<Record
 export function createHttpServer(options: HttpOptions): Server {
   const prefix = options.prefix ?? "/v1";
   const maxBody = options.maxBodyBytes ?? 1_048_576;
-
-  return createServer((request: IncomingMessage, response: ServerResponse) => {
+  const handler = (request: IncomingMessage, response: ServerResponse): void => {
     void handle(request, response).catch(() => {
       // A failure here means the response could not be written at all.
       if (!response.headersSent) response.writeHead(500, { "content-type": "application/json" });
       response.end('{"error":{"code":"INVALID_REQUEST","message":"request could not be processed"}}');
     });
-  });
+  };
+
+  if (options.tls !== undefined) {
+    if (options.tls.key === undefined || options.tls.cert === undefined) {
+      throw new TypeError("tls requires both a key and a cert; partial TLS is not a mode");
+    }
+    const tlsOptions: HttpsServerOptions = {
+      key: options.tls.key,
+      cert: options.tls.cert,
+      ...(options.tls.ca === undefined ? {} : { ca: options.tls.ca }),
+    };
+    // An HTTPS server to a caller; the same handler serves both, and the gateway
+    // never sees which transport carried the request.
+    return createSecureServer(tlsOptions, handler);
+  }
+
+  return createServer(handler);
 
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const url = new URL(request.url ?? "/", "http://localhost");

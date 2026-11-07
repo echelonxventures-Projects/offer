@@ -29,6 +29,7 @@
     "example:scale": "node examples/11-scale.ts",
     "example:intelligence": "node examples/12-intelligence.ts",
     "example:sql": "node examples/13-postgres.ts",
+    "demo:server": "node examples/14-demo-server.ts",
     "test:postgres": "node --test test/adapter-conformance.test.ts test/concurrency.test.ts",
     "vectors:generate": "node tools/generate-vectors.ts",
     "vectors:check": "node tools/generate-vectors.ts --check",

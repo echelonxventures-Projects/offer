@@ -54,6 +54,16 @@ what "sorted" means.
 - A Go or Rust implementation sorts the same way with its standard library, no
   ICU dependency and no special casing.
 
+**The same defect had a second half, found later.** Fixing the JavaScript side
+left the SQL layer sorting text by whatever the database's default collation
+is. SQLite's only collation is BINARY, which is codepoint order, so everything
+agreed — until a Postgres adapter actually ran, collated by `LC_COLLATE`, and
+the same mixed-case test failed against it. Codepoint ordering is not reachable
+by hoping each database defaults to it; the dialect now renders text sorts
+explicitly (`ORDER BY ... COLLATE "C"` on Postgres, bare on SQLite), and a guard
+in `test/extensibility.test.ts` flags a bare text-column sort at write time. See
+[Phase 7](../08-roadmap/01-phases.md).
+
 **Bad**
 
 - Alphabetical discovery ranking now puts `Middle` and `Zebra` before `apple`,

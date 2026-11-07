@@ -175,22 +175,12 @@ CREATE INDEX IF NOT EXISTS ix_touch_device  ON touchpoint (tenant, device_id, at
 `;
 
 export function schemaFor(dialect: SqlDialect): string {
-  return TEMPLATE.replaceAll("{{text}}", dialect.types.text)
-    .replaceAll("{{integer}}", dialect.types.integer)
-    .replaceAll("{{money}}", dialect.types.money)
-    .replaceAll("{{real}}", dialect.types.real);
+  return substituteTemplate(TEMPLATE, dialect);
 }
 
-/**
- * Statements, split so a driver that refuses multi-statement scripts still works.
- *
- * Line comments are stripped before splitting. They are documentation for
- * whoever reads this file, and one of them contains a semicolon - which a naive
- * split turns into half a comment followed by a statement fragment, and a
- * syntax error pointing at a word from an English sentence.
- */
-export function schemaStatements(dialect: SqlDialect): string[] {
-  return schemaFor(dialect)
+/** Strip line comments, split on semicolons, drop empties. Shared by both forms. */
+function splitStatements(sql: string): string[] {
+  return sql
     .split("\n")
     .map((line) => {
       const comment = line.indexOf("--");
@@ -200,4 +190,36 @@ export function schemaStatements(dialect: SqlDialect): string[] {
     .split(";")
     .map((statement) => statement.trim())
     .filter((statement) => statement.length > 0);
+}
+
+/**
+ * Statements for a dialect, substituted and split.
+ *
+ * Line comments are stripped before splitting. They are documentation for
+ * whoever reads this file, and one of them contains a semicolon - which a naive
+ * `split` turns into half a comment followed by a statement fragment, and a
+ * syntax error pointing at a word from an English sentence.
+ */
+export function schemaStatements(dialect: SqlDialect): string[] {
+  return splitStatements(substituteTemplate(TEMPLATE, dialect));
+}
+
+/**
+ * The schema as unsubstituted template statements, one per entry.
+ *
+ * Migrations store the schema this way and substitute the dialect's type names
+ * when it is applied, so the baseline is written once and works for every
+ * database. Same stripping and splitting rules as {@link schemaStatements}.
+ */
+export function schemaTemplateStatements(): string[] {
+  return splitStatements(TEMPLATE);
+}
+
+/** Substitute the dialect's type names into a template. Shared by both forms, and by migrations. */
+export function substituteTemplate(template: string, dialect: SqlDialect): string {
+  return template
+    .replaceAll("{{text}}", dialect.types.text)
+    .replaceAll("{{integer}}", dialect.types.integer)
+    .replaceAll("{{money}}", dialect.types.money)
+    .replaceAll("{{real}}", dialect.types.real);
 }

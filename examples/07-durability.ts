@@ -16,7 +16,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GoipPlatform } from "../src/platform/platform.ts";
-import { SqlitePlatformStore } from "../src/adapters/sqlite-store.ts";
+import { SqlPlatformStore } from "../src/adapters/sql/store.ts";
+import { NodeSqliteClient } from "../src/adapters/sql/sqlite-client.ts";
+import { SQLITE_DIALECT } from "../src/adapters/sql/dialect.ts";
 import { randomIdFactory } from "../src/kernel/ids.ts";
 import { fixedClock } from "../src/universal/temporal/authority.ts";
 import { DEMO_INSTANT_MS, TENANT, heading, money, must, row, section } from "./_bootstrap.ts";
@@ -25,12 +27,19 @@ import { simpleOffer } from "./_fixtures.ts";
 const directory = mkdtempSync(join(tmpdir(), "goip-"));
 const file = join(directory, "goip.db");
 
-const open = (atMs = DEMO_INSTANT_MS) =>
-  new GoipPlatform({
+// The same store the generic SQL adapter uses, on a file. Opening is async
+// because connecting is, so each session awaits it.
+const open = async (atMs = DEMO_INSTANT_MS) => {
+  const store = await SqlPlatformStore.open({
+    client: new NodeSqliteClient(file),
+    dialect: SQLITE_DIALECT,
+  });
+  return new GoipPlatform({
     clock: fixedClock(BigInt(atMs) * 1_000_000n),
     ids: randomIdFactory(),
-    store: new SqlitePlatformStore({ location: file }),
+    store,
   });
+};
 
 heading("EXAMPLE 7 - DURABILITY: survive a restart, and hold a limit under load");
 row("database", file);
@@ -38,7 +47,7 @@ row("database", file);
 /* ---------------------------------------------------------------- */
 section("session 1: author, fund, redeem");
 
-let platform = open();
+let platform = await open();
 let caps = platform.capabilities;
 
 must(
@@ -93,7 +102,7 @@ row("session 1", "closed");
 /* ---------------------------------------------------------------- */
 section("session 2: a brand-new platform opens the same file");
 
-platform = open();
+platform = await open();
 caps = platform.capabilities;
 
 const source = must(await platform.store.funding.get(TENANT, "merchant-acme"), "read funding");

@@ -16,7 +16,6 @@
  */
 import type { PlatformStore } from "../src/adapters/store.ts";
 import { MemoryPlatformStore } from "../src/adapters/memory-store.ts";
-import { SqlitePlatformStore } from "../src/adapters/sqlite-store.ts";
 import { SqlPlatformStore } from "../src/adapters/sql/store.ts";
 import { NodeSqliteClient } from "../src/adapters/sql/sqlite-client.ts";
 import { POSTGRES_DIALECT, SQLITE_DIALECT } from "../src/adapters/sql/dialect.ts";
@@ -50,9 +49,12 @@ async function postgresStore(url: string): Promise<PlatformStore> {
 
 export const ADAPTERS: AdapterUnderTest[] = [
   { name: "memory", create: async () => new MemoryPlatformStore() },
-  { name: "sqlite", create: async () => new SqlitePlatformStore({ location: ":memory:" }) },
   {
-    name: "sql/sqlite",
+    // The generic SQL store on Node's built-in SQLite driver. The separate
+    // synchronous adapter was retired: two stores doing the same job is the drift
+    // risk this project argues against everywhere else, and one schema now serves
+    // every SQL dialect.
+    name: "sqlite",
     create: () => SqlPlatformStore.open({ client: new NodeSqliteClient(":memory:"), dialect: SQLITE_DIALECT }),
   },
   ...(POSTGRES_URL === undefined

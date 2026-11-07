@@ -497,6 +497,35 @@ describe("guard: the SQL adapter stays portable", () => {
     assert.deepEqual(offences, []);
   });
 
+  test("text columns are ordered through the dialect, not the database's collation", () => {
+    // SQLite's only text collation is BINARY, which compares by codepoint.
+    // Postgres collates by the database's LC_COLLATE - locale-dependent, and
+    // case-folding in most locales - so a bare `ORDER BY` on a text column
+    // disagrees with every other adapter on any mixed-case id, and ids here
+    // embed unit codes like `USD`, so mixed-case is the normal case. The
+    // failure only appears against a real second database, which is exactly how
+    // it shipped unnoticed. See ADR 0020.
+    //
+    // A sort key the dialect builds is a `${...}` interpolation, so it cannot
+    // match a bare-identifier pattern at all; an expression such as
+    // `CAST(col AS ...)` is excluded by the paren lookahead. What remains is a
+    // bare column, and a bare column ordered in SQL is text unless it is one of
+    // the numeric columns below.
+    const numericSortColumns = new Set(["seq", "at_seconds"]);
+    const offences: string[] = [];
+    for (const [name, code] of sqlSource()) {
+      for (const match of code.matchAll(/ORDER BY\s+([A-Za-z_]\w*)\b(?!\s*\()/gi)) {
+        const column = (match[1] ?? "").toLowerCase();
+        if (!numericSortColumns.has(column)) {
+          offences.push(
+            `${name}: ORDER BY ${column} sorts text by the database's default collation; use dialect.orderByText`,
+          );
+        }
+      }
+    }
+    assert.deepEqual(offences, []);
+  });
+
   test("an upsert never leaves a column reference unqualified", () => {
     // `DO UPDATE SET x = x + 1` is ambiguous in Postgres - the bare column
     // could be the stored row or the proposed one. SQLite guesses; Postgres

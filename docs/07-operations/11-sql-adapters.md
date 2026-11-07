@@ -112,7 +112,7 @@ than headroom nobody will use. **Postgres gives up neither**, because
 
 ## What differs between dialects
 
-Five things, and they are all the dialect knows about.
+Six things, and they are all the dialect knows about.
 
 | | SQLite | Postgres |
 | --- | --- | --- |
@@ -120,10 +120,22 @@ Five things, and they are all the dialect knows about.
 | Column types | above | above |
 | Opening a write | `BEGIN IMMEDIATE` | `BEGIN` |
 | Scalar maximum | `MAX(a, b)` | `GREATEST(a, b)` |
+| Ordering text | bare `ORDER BY` | `ORDER BY … COLLATE "C"` |
 | Setup | two `PRAGMA`s | none |
 
 Queries are written with `?` whatever the dialect, and the session renumbers
 them, so the SQL in the store reads the same for every database.
+
+**Why text ordering is the dialect's business.** SQLite has one text collation,
+BINARY, which compares by codepoint. Postgres collates by the database's
+`LC_COLLATE`, which is locale-dependent and folds case in most of them. So the
+*same* `ORDER BY id` returns a different order per database for any mixed-case
+id — and account ids embed unit codes like `USD`, while source and subject ids
+are tenant-supplied, so mixed-case is the normal case, not an edge. A bare
+`ORDER BY` is not neutral ground; it is a bet that every database defaults to
+codepoint order, which is true for exactly one of these. `dialect.orderByText`
+renders the sort, and a guard in `test/extensibility.test.ts` flags a bare
+text-column sort at write time. See [ADR 0020](../06-adr/0020-codepoint-ordering.md).
 
 **Why the transaction verbs differ.** SQLite needs `BEGIN IMMEDIATE` to take the
 write lock up front; a plain `BEGIN` defers it and turns a concurrent

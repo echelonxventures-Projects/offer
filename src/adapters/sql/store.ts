@@ -43,6 +43,7 @@ import type { SqlClient } from "./client.ts";
 import { renumberPlaceholders } from "./client.ts";
 import type { SqlDialect } from "./dialect.ts";
 import { schemaStatements } from "./schema.ts";
+import { migrate, type Migration } from "./migrations.ts";
 import type {
   AuditCheckpoint,
   LedgerSnapshot,
@@ -55,6 +56,7 @@ import type {
   FundingStore,
   GrantStore,
   LedgerStore,
+  MaintenanceStore,
   PlatformStore,
   RestoreLimitsRequest,
   TouchpointQuery,
@@ -89,6 +91,11 @@ export class SqlSession {
 
   #sql(sql: string): string {
     return renumberPlaceholders(sql, (index) => this.dialect.placeholder(index));
+  }
+
+  /** Renumber placeholders for this session's dialect. Public for migrations. */
+  renumber(sql: string): string {
+    return this.#sql(sql);
   }
 
   /** Rows affected. `0` from a conditional update means the condition failed. */
@@ -158,7 +165,7 @@ class SqlExchangeStore implements ValueExchangeStore {
       }
     }
     const rows = await this.db.all(
-      `SELECT document, realities FROM value_exchange WHERE ${clauses.join(" AND ")} ORDER BY id`,
+      `SELECT document, realities FROM value_exchange WHERE ${clauses.join(" AND ")} ORDER BY ${this.db.dialect.orderByText("id")}`,
       ...params,
     );
     const found = rows
@@ -210,7 +217,7 @@ class SqlGrantStore implements GrantStore {
 
   async forSubject(tenant: string, subjectId: string): Promise<Result<Grant[]>> {
     const rows = await this.db.all(
-      `SELECT document FROM grant_row WHERE tenant = ? AND subject_id = ? ORDER BY id`,
+      `SELECT document FROM grant_row WHERE tenant = ? AND subject_id = ? ORDER BY ${this.db.dialect.orderByText("id")}`,
       tenant,
       subjectId,
     );
@@ -538,7 +545,10 @@ class SqlFundingStore implements FundingStore {
   }
 
   async list(tenant: string): Promise<Result<FundingSource[]>> {
-    const rows = await this.db.all(`SELECT id FROM funding_source WHERE tenant = ? ORDER BY id`, tenant);
+    const rows = await this.db.all(
+      `SELECT id FROM funding_source WHERE tenant = ? ORDER BY ${this.db.dialect.orderByText("id")}`,
+      tenant,
+    );
     const sources: FundingSource[] = [];
     for (const row of rows) {
       const found = await this.#read(tenant, text(row.id));
@@ -669,7 +679,7 @@ class SqlExecutionStore implements ExecutionStore {
 
   async forSubject(tenant: string, subjectId: string): Promise<Result<Execution[]>> {
     const rows = await this.db.all(
-      `SELECT document FROM execution WHERE tenant = ? AND subject_id = ? ORDER BY id`,
+      `SELECT document FROM execution WHERE tenant = ? AND subject_id = ? ORDER BY ${this.db.dialect.orderByText("id")}`,
       tenant,
       subjectId,
     );
@@ -952,6 +962,33 @@ class SqlTouchpointStore implements TouchpointStore {
   }
 }
 
+class SqlMaintenanceStore implements MaintenanceStore {
+  readonly db: SqlSession;
+  constructor(db: SqlSession) {
+    this.db = db;
+  }
+
+  async recordRun(tenant: string, job: string, at: string): Promise<Result<void>> {
+    await this.db.run(
+      `INSERT INTO maintenance_run (tenant, job, at) VALUES (?,?,?)
+       ON CONFLICT(tenant, job) DO UPDATE SET at = excluded.at`,
+      tenant,
+      job,
+      at,
+    );
+    return ok(undefined);
+  }
+
+  async lastRun(tenant: string, job: string): Promise<Result<string | undefined>> {
+    const row = await this.db.one(
+      `SELECT at FROM maintenance_run WHERE tenant = ? AND job = ?`,
+      tenant,
+      job,
+    );
+    return ok(row === undefined ? undefined : text(row.at));
+  }
+}
+
 /* ------------------------------------------------------------------ */
 
 /**
@@ -981,6 +1018,7 @@ export class SqlPlatformStore implements PlatformStore {
   readonly ledger: LedgerStore;
   readonly audit: AuditStore;
   readonly touchpoints: TouchpointStore;
+  readonly maintenance: MaintenanceStore;
 
   private constructor(session: SqlSession) {
     this.#session = session;
@@ -995,6 +1033,7 @@ export class SqlPlatformStore implements PlatformStore {
     this.ledger = new SqlLedgerStore(session);
     this.audit = new SqlAuditStore(session);
     this.touchpoints = new SqlTouchpointStore(session);
+    this.maintenance = new SqlMaintenanceStore(session);
   }
 
   /**
@@ -1002,14 +1041,26 @@ export class SqlPlatformStore implements PlatformStore {
    *
    * A constructor cannot await, and a store that returns before its schema
    * exists is a store whose first write fails for a reason nobody will guess.
+   *
+   * The schema comes from the migration runner rather than a raw `CREATE TABLE`
+   * list, so an existing database is brought current instead of being assumed
+   * fresh. The baseline migration is the same DDL that used to run here; there
+   * is still one copy of it, in `schema.ts`.
+   *
+   * Pass `migrations` to run a custom list - a deployment that has shipped its
+   * own migration files supplies them here rather than editing the shipped list.
    */
-  static async open(options: SqlStoreOptions): Promise<SqlPlatformStore> {
+  static async open(
+    options: SqlStoreOptions & { migrations?: readonly Migration[] },
+  ): Promise<SqlPlatformStore> {
     const session = new SqlSession(options.client, options.dialect);
     for (const statement of options.dialect.setup) await options.client.script(statement);
     if (options.createSchema !== false) {
-      for (const statement of schemaStatements(options.dialect)) {
-        await options.client.script(statement);
-      }
+      const store = new SqlPlatformStore(session);
+      await migrate(store, options.dialect, {
+        ...(options.migrations === undefined ? {} : { migrations: options.migrations }),
+      });
+      return store;
     }
     return new SqlPlatformStore(session);
   }
@@ -1043,6 +1094,43 @@ export class SqlPlatformStore implements PlatformStore {
   async transaction<T>(work: (tx: PlatformStore) => Promise<Result<T>>): Promise<Result<T>> {
     if (this.#session.depth > 0) return work(this);
     return this.#atomic(() => work(this));
+  }
+
+  /**
+   * Run several statements in one transaction, for schema migration.
+   *
+   * Separate from {@link transaction} because that one is for data and returns a
+   * result, and a schema change has no result to return - only the fact that it
+   * all applied. A migration that applies half of itself leaves the database at
+   * a version nobody shipped, which is the failure the transaction is for.
+   */
+  async transactional(statements: readonly string[]): Promise<void> {
+    await this.#atomic(async () => {
+      for (const statement of statements) {
+        await this.#session.client.execute(this.#session.renumber(statement));
+      }
+      return ok(undefined);
+    });
+  }
+
+  /** Read a single scalar, or undefined when no row matched. */
+  async scalar(sql: string, ...params: unknown[]): Promise<bigint | number | string | undefined> {
+    const rows = await this.#session.all(sql, ...params);
+    const row = rows[0];
+    if (row === undefined) return undefined;
+    const value = Object.values(row)[0];
+    return value === null || value === undefined ? undefined : (value as bigint | number | string);
+  }
+
+  /**
+   * Read rows for an inspection query.
+   *
+   * The store's job is the ports it implements; this exists for the operator
+   * queries that do not deserve a new method - "which tables exist", "what
+   * version is the schema at". Not used by any capability.
+   */
+  async query(sql: string, ...params: unknown[]): Promise<Readonly<Record<string, unknown>>[]> {
+    return this.#session.all(sql, ...params);
   }
 
   async close(): Promise<void> {

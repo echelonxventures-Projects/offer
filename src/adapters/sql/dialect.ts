@@ -59,6 +59,23 @@ export interface SqlDialect extends RegistryEntry {
    */
   greatest(a: string, b: string): string;
 
+  /**
+   * Order a text column in codepoint order.
+   *
+   * This is the one place a database's defaults are not neutral. SQLite's only
+   * text collation is BINARY, which compares by codepoint. Postgres collates by
+   * the database's `LC_COLLATE` - locale-dependent, and case-folding in most
+   * locales - so a plain `ORDER BY` on a mixed-case id disagrees with every
+   * other adapter. Account ids embed unit codes like `USD` and source ids are
+   * tenant-supplied, so "mixed-case" is the normal case here, not an edge.
+   *
+   * [ADR 0020](../../06-adr/0020-codepoint-ordering.md) makes codepoint order the
+   * contract across implementations; this is how a database that would rather
+   * use the locale still keeps it. Only applied to text columns - numeric
+   * columns such as `seq` have no collation and are ordered directly.
+   */
+  orderByText(column: string): string;
+
   /** Coerce a driver's idea of an integer column into a bigint. */
   toBigInt(value: unknown): bigint;
 }
@@ -94,6 +111,7 @@ export const SQLITE_DIALECT: SqlDialect = {
   beginWrite: "BEGIN IMMEDIATE",
   setup: ["PRAGMA journal_mode = WAL", "PRAGMA foreign_keys = ON"],
   greatest: (a, b) => `MAX(${a}, ${b})`,
+  orderByText: (column) => column,
   toBigInt: coerceBigInt,
 };
 
@@ -111,6 +129,7 @@ export const POSTGRES_DIALECT: SqlDialect = {
   beginWrite: "BEGIN",
   setup: [],
   greatest: (a, b) => `GREATEST(${a}, ${b})`,
+  orderByText: (column) => `${column} COLLATE "C"`,
   toBigInt: coerceBigInt,
 };
 

@@ -29,6 +29,7 @@ export * from "./observability/metrics.ts";
 export * from "./observability/health.ts";
 export * from "./observability/alerts.ts";
 export * from "./operations/maintenance.ts";
+export * from "./operations/scheduler.ts";
 export * from "./kernel/order.ts";
 export * from "./adapters/store.ts";
 export * from "./adapters/memory-store.ts";

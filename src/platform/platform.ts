@@ -267,6 +267,9 @@ export class GoipPlatform {
       },
       {
         alerts: this.alerts,
+        // Last-run times persist with the data they describe, so a restart does
+        // not forget when the sweep last ran and re-run it immediately.
+        store: this.store.maintenance,
         ...(options.metricReader === undefined ? {} : { metrics: options.metricReader }),
       },
     );

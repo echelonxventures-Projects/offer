@@ -25,6 +25,7 @@ import type { AlertEngine, AlertFiring, MetricReader } from "../observability/al
 import type { AuditService } from "../audit/audit-service.ts";
 import type { ReconciliationService } from "../ledger/reconciliation.ts";
 import type { ReservationReaper } from "../engines/reaper.ts";
+import type { MaintenanceStore } from "../adapters/store.ts";
 import { compareKeys } from "../kernel/order.ts";
 
 export interface MaintenanceConfigView {
@@ -224,6 +225,14 @@ export interface MaintenanceRunnerOptions {
   readonly alerts?: AlertEngine;
   /** Where alert rules read metrics from. Omit to skip alert evaluation. */
   readonly metrics?: MetricReader;
+  /**
+   * Where last-run times are kept. Omit to hold them in process.
+   *
+   * A store-backed runner survives a restart and can share times across
+   * instances; an in-process one forgets both on exit. The in-memory map is the
+   * fallback, not the recommendation.
+   */
+  readonly store?: MaintenanceStore;
 }
 
 export class MaintenanceRunner {
@@ -232,20 +241,21 @@ export class MaintenanceRunner {
   readonly #alerts?: AlertEngine;
   readonly #metrics?: MetricReader;
   /**
-   * Last-run times, per tenant and job, held in process.
+   * Last-run times for the in-process fallback, keyed `tenant/job`.
    *
-   * A multi-process deployment needs a lease instead, or every instance runs
-   * every job. The sweep and the checkpoint are both idempotent so duplicate
-   * runs are harmless rather than dangerous - but they are wasteful, and
-   * `docs/07-operations/07-maintenance.md` says what to do about it.
+   * Used only when no {@link MaintenanceStore} was supplied. A store-backed
+   * runner reads and writes through the port instead, so a restart does not
+   * forget when the sweep last ran and a second instance does not repeat it.
    */
   readonly #lastRun = new Map<string, bigint>();
+  readonly #store?: MaintenanceStore;
 
   constructor(context: Omit<MaintenanceContext, "tenant" | "now">, options: MaintenanceRunnerOptions = {}) {
     this.#context = context;
     this.jobs = options.jobs ?? maintenanceJobRegistry();
     if (options.alerts) this.#alerts = options.alerts;
     if (options.metrics) this.#metrics = options.metrics;
+    this.#store = options.store;
   }
 
   /** Run every job whose interval has elapsed. Called by whatever schedules it. */
@@ -258,6 +268,24 @@ export class MaintenanceRunner {
     return this.#run(tenant, now, true);
   }
 
+  /** When a job last completed, as a tick string, or undefined if it never has. */
+  async lastRunAt(tenant: string, job: string): Promise<bigint | undefined> {
+    if (this.#store === undefined) return this.#lastRun.get(`${tenant}/${job}`);
+    const stored = await this.#store.lastRun(tenant, job);
+    return stored.ok && stored.value !== undefined ? BigInt(stored.value) : undefined;
+  }
+
+  /** Record a completion, through the store when there is one, else in process. */
+  async #recordRun(tenant: string, job: string, tick: bigint): Promise<void> {
+    if (this.#store === undefined) {
+      this.#lastRun.set(`${tenant}/${job}`, tick);
+      return;
+    }
+    // A failed write is not a failed job: the work already happened, and refusing
+    // to record it would only make the next run repeat it.
+    await this.#store.recordRun(tenant, job, tick.toString());
+  }
+
   async #run(tenant: string, now: Instant, force: boolean): Promise<Result<MaintenanceReport>> {
     const context: MaintenanceContext = { ...this.#context, tenant, now };
     const reports: JobReport[] = [];
@@ -267,7 +295,7 @@ export class MaintenanceRunner {
 
     for (const job of [...this.jobs.list()].sort((a, b) => a.order - b.order || compareKeys(a.key, b.key))) {
       const key = `${tenant}/${job.key}`;
-      const last = this.#lastRun.get(key);
+      const last = await this.lastRunAt(tenant, job.key);
       const dueAt = last === undefined ? now.tick : last + BigInt(Math.round(job.intervalSeconds * 1000));
 
       if (!force && last !== undefined && now.tick < dueAt) {
@@ -283,7 +311,7 @@ export class MaintenanceRunner {
       const started = Date.now();
       const outcome = await job.run(context);
       const durationMs = Date.now() - started;
-      this.#lastRun.set(key, now.tick);
+      await this.#recordRun(tenant, job.key, now.tick);
 
       if (!outcome.ok) {
         // An optional job whose prerequisite is absent is a skip, not a failure:

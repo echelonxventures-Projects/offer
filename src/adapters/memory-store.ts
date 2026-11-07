@@ -40,6 +40,7 @@ import type {
   FundingStore,
   GrantStore,
   LedgerStore,
+  MaintenanceStore,
   PlatformStore,
   RestoreLimitsRequest,
   TouchpointQuery,
@@ -80,6 +81,8 @@ interface State {
   audit: Map<string, AuditRecord[]>;
   checkpoints: Map<string, AuditCheckpoint>;
   touchpoints: Touchpoint[];
+  /** When each maintenance job last completed, keyed `tenant/job`. */
+  maintenanceRuns: Map<string, string>;
 }
 
 function emptyState(): State {
@@ -95,6 +98,7 @@ function emptyState(): State {
     audit: new Map(),
     checkpoints: new Map(),
     touchpoints: [],
+    maintenanceRuns: new Map(),
   };
 }
 
@@ -126,6 +130,7 @@ function snapshot(state: State): State {
     audit: new Map([...state.audit].map(([k, records]) => [k, [...records]])),
     checkpoints: new Map(state.checkpoints),
     touchpoints: [...state.touchpoints],
+    maintenanceRuns: new Map(state.maintenanceRuns),
   };
 }
 
@@ -627,6 +632,24 @@ class MemTouchpointStore implements TouchpointStore {
 
 /* ------------------------------------------------------------------ */
 
+class MemMaintenanceStore implements MaintenanceStore {
+  readonly #state: () => State;
+  constructor(state: () => State) {
+    this.#state = state;
+  }
+
+  async recordRun(tenant: string, job: string, at: string): Promise<Result<void>> {
+    this.#state().maintenanceRuns.set(`${tenant}/${job}`, at);
+    return ok(undefined);
+  }
+
+  async lastRun(tenant: string, job: string): Promise<Result<string | undefined>> {
+    return ok(this.#state().maintenanceRuns.get(`${tenant}/${job}`));
+  }
+}
+
+/* ------------------------------------------------------------------ */
+
 export class MemoryPlatformStore implements PlatformStore {
   #state: State;
   readonly #lock: Mutex;
@@ -639,6 +662,7 @@ export class MemoryPlatformStore implements PlatformStore {
   readonly ledger: LedgerStore;
   readonly audit: AuditStore;
   readonly touchpoints: TouchpointStore;
+  readonly maintenance: MaintenanceStore;
 
   constructor(state: State = emptyState(), lock: Mutex = new Mutex()) {
     this.#state = state;
@@ -652,6 +676,7 @@ export class MemoryPlatformStore implements PlatformStore {
     this.ledger = new MemLedgerStore(s);
     this.audit = new MemAuditStore(s, lock);
     this.touchpoints = new MemTouchpointStore(s);
+    this.maintenance = new MemMaintenanceStore(s);
   }
 
   /**

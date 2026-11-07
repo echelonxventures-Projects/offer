@@ -276,6 +276,22 @@ export interface TouchpointStore {
   journey(query: TouchpointQuery): Promise<Result<Touchpoint[]>>;
 }
 
+/**
+ * When each maintenance job last ran, so the schedule survives a restart.
+ *
+ * Without this the runner holds last-run times in process, and a multi-process
+ * deployment runs every job on every instance. The jobs are idempotent, so that
+ * is wasteful rather than dangerous - but a restart also forgets when the sweep
+ * last ran and runs it again immediately, which is the behaviour an operator
+ * reading "runs every 5 minutes" does not expect.
+ */
+export interface MaintenanceStore {
+  /** Record that `job` completed at `at`, replacing any earlier time. */
+  recordRun(tenant: string, job: string, at: string): Promise<Result<void>>;
+  /** The last recorded completion tick, or undefined when the job never ran. */
+  lastRun(tenant: string, job: string): Promise<Result<string | undefined>>;
+}
+
 /* ------------------------------------------------------------------ */
 
 export interface PlatformStore {
@@ -287,6 +303,7 @@ export interface PlatformStore {
   readonly ledger: LedgerStore;
   readonly audit: AuditStore;
   readonly touchpoints: TouchpointStore;
+  readonly maintenance: MaintenanceStore;
 
   /**
    * Run `work` atomically. Every store reached through the handle passed to
